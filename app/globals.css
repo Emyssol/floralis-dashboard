@@ -1,26 +1,434 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --cream: #FFF9F2;
+  --cream-dark: #FFF0E6;
+  --pink: #F4C7D7;
+  --pink-deep: #d4608a;
+  --lilac: #DCCCF4;
+  --peach: #FFD4B8;
+  --gold: #F6D28F;
+  --mint: #B7D6A3;
+  --text: #3a2a3a;
+  --mid: #7a5a7a;
+  --light: #b89ab8;
+  --border: #f0dded;
+  --border-dark: #e0c8de;
+  --glow-pink: rgba(212, 96, 138, 0.25);
+  --glow-lilac: rgba(156, 107, 210, 0.2);
+  --glow-gold: rgba(215, 155, 30, 0.25);
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-border: rgba(255, 255, 255, 0.5);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--cream);
+  color: var(--text);
+  min-height: 100vh;
+  font-family: var(--font-geist, system-ui, sans-serif);
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+
+.cozy-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  box-shadow:
+    0 2px 8px rgba(180, 100, 140, 0.06),
+    0 8px 24px rgba(180, 100, 140, 0.08);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  box-shadow:
+    0 4px 24px rgba(180, 100, 140, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.glass-card-dark {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 24px;
+}
+
+.glow-card {
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 8px 32px rgba(180, 100, 140, 0.12),
+    0 0 80px rgba(212, 96, 138, 0.06);
+  transition: box-shadow 0.3s ease;
+}
+
+.glow-card:hover {
+  box-shadow:
+    0 0 0 1px var(--border-dark),
+    0 12px 40px rgba(180, 100, 140, 0.18),
+    0 0 80px rgba(212, 96, 138, 0.12);
+}
+
+.glow-card-ur:hover {
+  box-shadow:
+    0 0 0 1px #f9c8dc,
+    0 12px 40px rgba(212, 96, 138, 0.25),
+    0 0 60px rgba(212, 96, 138, 0.15);
+}
+
+.glow-card-ssr:hover {
+  box-shadow:
+    0 0 0 1px #f5dfa0,
+    0 12px 40px rgba(176, 112, 16, 0.2),
+    0 0 60px rgba(246, 210, 143, 0.2);
+}
+
+.glow-card-sr:hover {
+  box-shadow:
+    0 0 0 1px #d4bff5,
+    0 12px 40px rgba(112, 64, 176, 0.2),
+    0 0 60px rgba(220, 204, 244, 0.25);
+}
+
+.glow-card-r:hover {
+  box-shadow:
+    0 0 0 1px #b8cef8,
+    0 12px 40px rgba(48, 96, 192, 0.15),
+    0 0 60px rgba(180, 200, 255, 0.2);
+}
+
+/* ============================================================
+   PILLS & BADGES
+   ============================================================ */
+
+.cozy-pill {
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.badge-cargo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ============================================================
+   GRADIENT TEXT
+   ============================================================ */
+
+.gradient-text {
+  background: linear-gradient(135deg, #d4608a 0%, #9B4FD4 50%, #5B6FD4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-gold {
+  background: linear-gradient(135deg, #c47a10 0%, #d4a017 50%, #f6d28f 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-lilac {
+  background: linear-gradient(135deg, #7B3FA0 0%, #9B5FD4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(135deg, #d4608a, #9B4FD4);
+  box-shadow: 0 4px 16px rgba(212, 96, 138, 0.3);
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(212, 96, 138, 0.4);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--mid);
+  background: white;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(180, 100, 140, 0.06);
+  transition: all 0.2s ease;
+}
+
+.btn-ghost:hover {
+  border-color: var(--border-dark);
+  background: #fdf6f9;
+  color: var(--pink-deep);
+}
+
+/* ============================================================
+   BACKGROUNDS
+   ============================================================ */
+
+.floral-bg {
+  background:
+    radial-gradient(ellipse 80% 50% at 10% 10%, rgba(244, 150, 180, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 90% 80%, rgba(180, 140, 220, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(246, 210, 143, 0.04) 0%, transparent 60%),
+    var(--cream);
+}
+
+.hero-bg {
+  background: linear-gradient(
+    135deg,
+    #FFF5F8 0%,
+    #F8F2FF 30%,
+    #F2F4FF 60%,
+    #F2FFF6 100%
+  );
+}
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    #f5e8ef 0%,
+    #fce8f2 40%,
+    #f9e0ec 60%,
+    #f5e8ef 100%
+  );
+  background-size: 300% 100%;
+  animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  border-radius: 12px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-dark);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--light);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  33% { transform: translateY(-12px) rotate(4deg); }
+  66% { transform: translateY(-6px) rotate(-3deg); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-18px) rotate(6deg); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-float-slow { animation: float-slow 9s ease-in-out infinite; }
+.animate-glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+/* ============================================================
+   MODAL OVERLAY
+   ============================================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(30, 10, 30, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* ============================================================
+   PROGRESS BARS
+   ============================================================ */
+
+.progress-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: #f0e8ee;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ============================================================
+   CHART ELEMENTS
+   ============================================================ */
+
+.donut-chart {
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-chart::after {
+  content: '';
+  position: absolute;
+  inset: 28%;
+  border-radius: 50%;
+  background: white;
+  box-shadow: inset 0 2px 8px rgba(180, 100, 140, 0.08);
+}
+
+/* ============================================================
+   STATS NUMBERS
+   ============================================================ */
+
+.stat-number {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================
+   DIVIDERS
+   ============================================================ */
+
+.divider-cozy {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--border),
+    var(--border-dark),
+    var(--border),
+    transparent
+  );
+}
+
+/* ============================================================
+   RANKING
+   ============================================================ */
+
+.podium-gold {
+  background: linear-gradient(135deg, #FFF8E0, #FEF3C7);
+  border: 1px solid #FDE68A;
+  box-shadow: 0 8px 32px rgba(215, 155, 30, 0.15);
+}
+
+.podium-silver {
+  background: linear-gradient(135deg, #F8F8F8, #F1F1F1);
+  border: 1px solid #E2E2E2;
+  box-shadow: 0 8px 32px rgba(140, 140, 160, 0.12);
+}
+
+.podium-bronze {
+  background: linear-gradient(135deg, #FFF5EE, #FEE9D4);
+  border: 1px solid #FDD0A8;
+  box-shadow: 0 8px 32px rgba(180, 100, 50, 0.12);
+}
+
+/* ============================================================
+   STICKY HEADER
+   ============================================================ */
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 249, 242, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
 }

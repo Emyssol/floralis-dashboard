@@ -1,65 +1,155 @@
-import Image from "next/image";
+export const dynamic = "force-dynamic"
 
-export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+import { notion } from "@/app/lib/notion"
+import Dashboard from "@/app/components/Dashboard"
+import type { Flower, Member } from "@/app/lib/types"
+
+/** Busca TODAS as páginas de uma database (paginação automática) */
+async function queryAll(database_id: string) {
+  const results: any[] = []
+  let cursor: string | undefined = undefined
+  do {
+    const res: any = await notion.databases.query({
+      database_id,
+      start_cursor: cursor,
+      page_size: 100,
+    })
+    results.push(...res.results)
+    cursor = res.has_more ? res.next_cursor : undefined
+  } while (cursor)
+  return results
+}
+
+/** Busca todos os IDs de uma relation paginada (Notion limita a 25 por padrão) */
+async function getRelationIds(pageId: string, propertyId: string): Promise<string[]> {
+  try {
+    const ids: string[] = []
+    let data: any = await notion.pages.properties.retrieve({
+      page_id: pageId,
+      property_id: propertyId,
+    })
+
+    while (true) {
+      // Formato paginado
+      const items: any[] = data.results ?? []
+      for (const item of items) {
+        const id = item?.relation?.id ?? item?.id
+        if (id) ids.push(id)
+      }
+      if (data.has_more && data.next_cursor) {
+        data = await (notion.pages.properties.retrieve as any)({
+          page_id: pageId,
+          property_id: propertyId,
+          start_cursor: data.next_cursor,
+        })
+      } else break
+    }
+
+    // Formato direto (array simples)
+    if (ids.length === 0 && Array.isArray(data.relation)) {
+      return data.relation.map((r: any) => r.id)
+    }
+
+    return ids
+  } catch {
+    return []
+  }
+}
+
+/** Remove emoji/espaço do início de uma string */
+function stripEmoji(str: string) {
+  return str.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "").trim() || str
+}
+
+async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
+  const [flowerPages, memberPages] = await Promise.all([
+    queryAll(process.env.NOTION_FLOWERS_DB!),
+    queryAll(process.env.NOTION_MEMBERS_DB!),
+  ])
+
+  // IDs das propriedades (pega do primeiro item para usar no retrieve)
+  const firstFlower = flowerPages[0]
+  const firstMember = memberPages[0]
+  const quemTemPropId   = firstFlower?.properties["👑 Quem tem"]?.id
+  const floresPropId    = firstMember?.properties["🌸 Flores que tem"]?.id
+  const favsPropId      = firstMember?.properties["💎 Flores preferidas"]?.id
+
+  // ── Flores: busca owners real via relation paginada ──
+  const flowers: Flower[] = await Promise.all(
+    flowerPages.map(async (page: any) => {
+      const props = page.properties
+
+      // owners: tenta pegar direto; se has_more, busca paginado
+      let owners = props["👑 Quem tem"]?.relation?.length ?? 0
+      if (props["👑 Quem tem"]?.has_more && quemTemPropId) {
+        const ids = await getRelationIds(page.id, quemTemPropId)
+        owners = ids.length
+      }
+
+      return {
+        id: page.id,
+        name: props["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa",
+        rarity: props["💗 Raridade"]?.select?.name || "💚 N",
+        origin: props["🛒 Origem"]?.select?.name || "Desconhecida",
+        points: props["⭐ Pontuação Base"]?.number || 0,
+        owners,
+        image:
+          page.cover?.file?.url ||
+          page.cover?.external?.url ||
+          props["🖼️ Imagem"]?.files?.[0]?.file?.url ||
+          props["🖼️ Imagem"]?.files?.[0]?.external?.url ||
+          null,
+      }
+    })
+  )
+
+  // Mapa ID → nome da flor
+  const flowerById: Record<string, string> = {}
+  flowers.forEach((f) => { flowerById[f.id] = f.name })
+
+  // ── Membros: busca relations paginadas ──
+  const members: Member[] = await Promise.all(
+    memberPages.map(async (page: any) => {
+      const props = page.properties
+
+      const cargoRaw  = props["🏷️ Cargo"]?.select?.name || "Membro"
+      const statusRaw =
+        props["⚔️ Status na competição"]?.select?.name ||
+        props["⚔️ Status na competição"]?.status?.name ||
+        "Offline"
+
+      // Flores que tem
+      let flowerIds: string[] = props["🌸 Flores que tem"]?.relation?.map((r: any) => r.id) ?? []
+      if (props["🌸 Flores que tem"]?.has_more && floresPropId) {
+        flowerIds = await getRelationIds(page.id, floresPropId)
+      }
+
+      // Flores preferidas
+      let favIds: string[] = props["💎 Flores preferidas"]?.relation?.map((r: any) => r.id) ?? []
+      if (props["💎 Flores preferidas"]?.has_more && favsPropId) {
+        favIds = await getRelationIds(page.id, favsPropId)
+      }
+
+      return {
+        id: page.id,
+        name: props["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista",
+        cargo:  stripEmoji(cargoRaw),
+        status: stripEmoji(statusRaw),
+        avatar:
+          props["🖼️ Avatar"]?.files?.[0]?.file?.url ||
+          props["🖼️ Avatar"]?.files?.[0]?.external?.url ||
+          null,
+        bio: props["📝 Bio"]?.rich_text?.[0]?.plain_text || "",
+        flowers:   flowerIds.map((id) => flowerById[id]).filter(Boolean) as string[],
+        favorites: favIds.map((id)    => flowerById[id]).filter(Boolean) as string[],
+      }
+    })
+  )
+
+  return { flowers, members }
+}
+
+export default async function Home() {
+  const { flowers, members } = await getData()
+  return <Dashboard flowers={flowers} members={members} />
 }
