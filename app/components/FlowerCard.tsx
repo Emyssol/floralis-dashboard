@@ -75,7 +75,7 @@ export default function FlowerCard({ flower, members = [], totalMembers = 1, onC
           <img
             src={flower.image}
             alt={flower.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%" }}
           />
         ) : (
           <span style={{ fontSize: 46, userSelect: "none", opacity: 0.85 }}>🌸</span>

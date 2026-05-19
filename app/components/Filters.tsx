@@ -141,38 +141,42 @@ export default function Filters({ selectedRarity, setSelectedRarity, selectedOri
         )}
       </div>
 
-      {/* ── ORIGEM ── */}
+      {/* ── ORIGEM — Todas como pill + dropdown para o resto ── */}
       {origins.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={labelStyle}>Origem:</span>
 
-          {isMobile ? (
-            /* Dropdown em mobile */
+          {/* Pill "Todas" */}
+          <button
+            onClick={() => setSelectedOrigin("ALL")}
+            style={pillStyle(selectedOrigin === "ALL", "#d4608a", "#FFF0F5")}
+          >
+            Todas
+          </button>
+
+          {/* Dropdown para origens específicas */}
+          <div style={{ position: "relative" }}>
             <select
-              value={selectedOrigin}
-              onChange={(e) => setSelectedOrigin(e.target.value)}
-              style={dropdownStyle}
+              value={selectedOrigin === "ALL" ? "" : selectedOrigin}
+              onChange={(e) => setSelectedOrigin(e.target.value || "ALL")}
+              style={{
+                ...dropdownStyle,
+                flex: "none",
+                maxWidth: 220,
+                color: selectedOrigin !== "ALL" ? "#7040b0" : "#9a7ab0",
+                ...(selectedOrigin !== "ALL" ? {
+                  borderColor: "#9B4FD4",
+                  background: "#F5F0FF",
+                  boxShadow: "0 2px 8px #9B4FD433",
+                } : {}),
+              }}
             >
-              <option value="ALL">Todas as origens</option>
+              <option value="">Filtrar por origem...</option>
               {origins.map((o) => (
                 <option key={o} value={o}>{getOriginIcon(o)} {o}</option>
               ))}
             </select>
-          ) : (
-            /* Botões em desktop */
-            <>
-              <button onClick={() => setSelectedOrigin("ALL")}
-                style={pillStyle(selectedOrigin === "ALL", "#d4608a", "#FFF0F5")}>
-                Todas
-              </button>
-              {origins.map((o) => (
-                <button key={o} onClick={() => setSelectedOrigin(o)}
-                  style={pillStyle(selectedOrigin === o, "#7040b0", "#F5F0FF")}>
-                  {getOriginIcon(o)} {o}
-                </button>
-              ))}
-            </>
-          )}
+          </div>
         </div>
       )}
     </div>

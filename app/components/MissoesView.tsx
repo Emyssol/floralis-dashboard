@@ -186,7 +186,7 @@ function DisputaModal({
 
 // ── View principal ──
 export default function MissoesView({ flowers, members, search = "", onSelectMember, onSelectFlower }: Props) {
-  const [filterStatus, setFilterStatus] = useState<string[]>(["Em Missão", "Pausada"])
+  const [filterStatus, setFilterStatus] = useState<string[]>(["Em Missão"])
   const [sortBy, setSortBy] = useState<"name" | "points" | "status">("status")
   const [showDisputa, setShowDisputa] = useState(false)
 
@@ -231,7 +231,7 @@ export default function MissoesView({ flowers, members, search = "", onSelectMem
   const emMissaoCount  = members.filter((m) => m.status === "Em Missão").length
   const concluidoCount = members.filter((m) => m.status === "Concluiu").length
   const disputaCount   = Object.keys(flowerCompetitionCount).length
-  const allStatuses    = ["Em Missão", "Concluiu", "Pausada", "Fora"]
+  const allStatuses    = ["Em Missão", "Concluiu"]
 
   function toggleStatus(s: string) {
     setFilterStatus((prev) =>

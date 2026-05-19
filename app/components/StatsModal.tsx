@@ -1,5 +1,6 @@
 "use client"
 
+import React, { useState } from "react"
 import { motion } from "framer-motion"
 import { useEffect } from "react"
 import { rarityConfig } from "@/app/lib/rarity"
@@ -360,6 +361,8 @@ function ColecaoContent({ flowers }: { flowers: Flower[] }) {
 }
 
 function MissoesContent({ members, flowers }: { members: Member[]; flowers: Flower[] }) {
+  const [query, setQuery] = React.useState("")
+
   const statusConfig: Record<string, { bg: string; color: string; dot: string }> = {
     "Em Missão": { bg: "#DCFCE7", color: "#15803D", dot: "#22c55e" },
     "Concluiu":  { bg: "#EFF6FF", color: "#2060C0", dot: "#60a5fa" },
@@ -367,7 +370,7 @@ function MissoesContent({ members, flowers }: { members: Member[]; flowers: Flow
     "Fora":      { bg: "#F1F5F9", color: "#64748B", dot: "#94a3b8" },
   }
 
-  const active = members
+  const all = members
     .filter((m) => m.status === "Em Missão")
     .map((m) => ({
       member: m,
@@ -375,7 +378,11 @@ function MissoesContent({ members, flowers }: { members: Member[]; flowers: Flow
     }))
     .sort((a, b) => b.compFlowers.length - a.compFlowers.length)
 
-  if (active.length === 0) return (
+  const active = query.trim()
+    ? all.filter(({ member }) => member.name.toLowerCase().includes(query.toLowerCase()))
+    : all
+
+  if (all.length === 0) return (
     <p style={{ padding: "32px 0", textAlign: "center", fontWeight: 700, color: "#b89ab8" }}>
       Nenhuma florista Em Missão no momento
     </p>
@@ -383,9 +390,36 @@ function MissoesContent({ members, flowers }: { members: Member[]; flowers: Flow
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <p style={{ fontSize: 12, fontWeight: 600, color: "#9a7ab0", margin: "0 0 4px" }}>
-        {active.length} floristas atualmente Em Missão:
+      {/* Busca */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        background: "#f8f4fb", border: "1.5px solid #eddde8",
+        borderRadius: 12, padding: "7px 12px",
+      }}>
+        <span style={{ fontSize: 14, opacity: 0.5 }}>🔎</span>
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar florista..."
+          style={{
+            flex: 1, background: "transparent", border: "none", outline: "none",
+            fontSize: 13, fontWeight: 500, color: "#3a2a3a",
+          }}
+        />
+        {query && (
+          <button onClick={() => setQuery("")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#b89ab8" }}>✕</button>
+        )}
+      </div>
+
+      <p style={{ fontSize: 12, fontWeight: 600, color: "#9a7ab0", margin: 0 }}>
+        {active.length} de {all.length} floristas Em Missão{query ? ` — "${query}"` : ""}:
       </p>
+
+      {active.length === 0 && (
+        <p style={{ textAlign: "center", color: "#c4a8c4", fontSize: 13, padding: "20px 0" }}>Nenhuma florista encontrada</p>
+      )}
+
       {active.map(({ member, compFlowers }) => {
         const cfg = statusConfig["Em Missão"]
         return (
@@ -418,6 +452,7 @@ function MissoesContent({ members, flowers }: { members: Member[]; flowers: Flow
             </div>
             <span style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.dot}44`, borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
               <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
+
               Em Missão
             </span>
           </div>

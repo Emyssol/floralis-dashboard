@@ -105,7 +105,7 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
 
           {/* ── Stats ── */}
           <div style={{ marginBottom: 24 }}>
-            <StatsGrid flowers={flowers} members={members} onStatClick={setStatModal} />
+            <StatsGrid flowers={flowers} members={members} onStatClick={setStatModal} onTabChange={setActiveTab} />
           </div>
 
           {/* ── Tabs ── */}

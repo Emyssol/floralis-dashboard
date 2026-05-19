@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic"
 
 import { notion } from "@/app/lib/notion"
+import { proxyImage } from "@/app/lib/imageProxy"
 import Dashboard from "@/app/components/Dashboard"
 import type { Flower, Member } from "@/app/lib/types"
 
@@ -66,17 +67,15 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
   // ── Campo de competição: tenta variações do nome para garantir compatibilidade ──
   // Busca a chave real do campo independente do emoji exato
   function findCompProp(props: any): any {
-    // Tenta nomes possíveis
     const candidates = [
+      "🎖️ Flores para Competição",
       "🌿 Flores para Competição",
       "🌱 Flores para Competição",
       "💎 Flores preferidas",
-      "🌿 Flores para Competicao",
     ]
     for (const key of candidates) {
       if (props[key]) return { key, prop: props[key] }
     }
-    // Fallback: busca qualquer campo relation que contenha "Competição" ou "preferidas"
     for (const [key, val] of Object.entries(props)) {
       if (
         (key.includes("Competi") || key.includes("preferida")) &&
@@ -111,12 +110,13 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
         origin: props["🛒 Origem"]?.select?.name || "Desconhecida",
         points: props["⭐ Pontuação Base"]?.number || 0,
         owners,
-        image:
-          props["📷 Foto da Flor"]?.files?.[0]?.file?.url ||
-          props["📷 Foto da Flor"]?.files?.[0]?.external?.url ||
+        image: proxyImage(
+          props["🖼️ Foto da Flor"]?.files?.[0]?.file?.url ||
+          props["🖼️ Foto da Flor"]?.files?.[0]?.external?.url ||
           page.cover?.file?.url ||
           page.cover?.external?.url ||
-          null,
+          null
+        ),
       }
     })
   )
@@ -124,9 +124,13 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
   const flowerById: Record<string, string> = {}
   flowers.forEach((f) => { flowerById[f.id] = f.name })
 
-  // ── Membros ──
-  const members: Member[] = await Promise.all(
-    memberPages.map(async (page: any) => {
+  // Processa membros em lotes de 5 para evitar timeout
+  const BATCH = 5
+  const members: Member[] = []
+  for (let i = 0; i < memberPages.length; i += BATCH) {
+    const batch = memberPages.slice(i, i + BATCH)
+    const results = await Promise.all(
+      batch.map(async (page: any) => {
       const props = page.properties
 
       const cargoRaw  = props["🏷️ Cargo"]?.select?.name || "Membro"
@@ -153,17 +157,20 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
         name:   props["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista",
         cargo:  stripEmoji(cargoRaw),
         status: stripEmoji(statusRaw),
-        avatar:
+        avatar: proxyImage(
           props["🖼️ Avatar"]?.files?.[0]?.file?.url ||
           props["🖼️ Avatar"]?.files?.[0]?.external?.url ||
-          null,
+          null
+        ),
         bio:       props["📝 Bio"]?.rich_text?.[0]?.plain_text || "",
         flowers:   flowerIds.map((id) => flowerById[id]).filter(Boolean) as string[],
         // favorites agora mapeia Flores para Competição
         favorites: compIds.map((id) => flowerById[id]).filter(Boolean) as string[],
       }
     })
-  )
+    )
+    members.push(...results)
+  }
 
   return { flowers, members }
 }
