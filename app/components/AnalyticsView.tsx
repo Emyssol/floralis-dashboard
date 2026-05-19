@@ -100,12 +100,13 @@ function Card({ children, title, delay = 0 }: { children: React.ReactNode; title
 }
 
 // ── Flores menos possuídas de uma origem específica ──
-function OriginFlowers({ flowers, origin, color, bg, border }: {
+function OriginFlowers({ flowers, origin, color, bg, border, onSelectFlower }: {
   flowers: Flower[]
   origin: string
   color: string
   bg: string
   border: string
+  onSelectFlower?: (f: Flower) => void
 }) {
   const group = flowers
     .filter((f) => f.origin?.includes(origin))
@@ -132,10 +133,20 @@ function OriginFlowers({ flowers, origin, color, bg, border }: {
               flexShrink: 0, whiteSpace: "nowrap",
             }}>{f.rarity.split(" ")[1]}</span>
 
-            <span style={{
-              flex: 1, fontSize: 11, fontWeight: 600, color: "#3a2a3a",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }} title={f.name}>{f.name}</span>
+            <button
+              onClick={() => onSelectFlower?.(f)}
+              style={{
+                flex: 1, fontSize: 11, fontWeight: 600,
+                color: onSelectFlower ? color : "#3a2a3a",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                background: "none", border: "none", padding: 0,
+                cursor: onSelectFlower ? "pointer" : "default",
+                textAlign: "left",
+                textDecoration: onSelectFlower ? "underline" : "none",
+                textDecorationStyle: "dotted" as const,
+              }}
+              title={f.name}
+            >{f.name}</button>
 
             <div style={{ width: 64, height: 5, borderRadius: 999, background: "#f0e8ee", overflow: "hidden", flexShrink: 0 }}>
               <motion.div
@@ -164,22 +175,28 @@ export default function AnalyticsView({ flowers, members, onStatClick, onSelectF
   const coletadas    = flowers.filter((f) => f.owners > 0).length
   const naoColetadas = flowers.filter((f) => f.owners === 0).length
 
-  const tierData = [
-    { label: "Coletadas",     value: coletadas,    color: "#a78bfa", bg: "#f0eafb" },
-    { label: "Não coletadas", value: naoColetadas, color: "#d4608a", bg: "#FFF0F5" },
-  ]
-
-  const ownershipData = [
-    { label: "Exclusiva (1)",  value: flowers.filter((f) => f.owners === 1).length,                    color: "#d4608a", bg: "#FFF0F5" },
-    { label: "Poucas (2-3)",   value: flowers.filter((f) => f.owners >= 2 && f.owners <= 3).length,   color: "#f59e0b", bg: "#fef3c7" },
-    { label: "Algumas (4-8)", value: flowers.filter((f) => f.owners >= 4 && f.owners <= 8).length,   color: "#a78bfa", bg: "#f0eafb" },
-    { label: "Muitas (9-14)", value: flowers.filter((f) => f.owners >= 9 && f.owners <= 14).length,  color: "#60a5fa", bg: "#eff6ff" },
-    { label: "Popular (15+)", value: flowers.filter((f) => f.owners >= 15).length,                   color: "#34d399", bg: "#f0fdf4" },
-  ]
-
   const raras = flowers.filter((f) => ["❤️ UR", "💛 SSR", "💜 SR"].includes(f.rarity))
   const rarasColetadas = raras.filter((f) => f.owners > 0).length
   const unicasCount = flowers.filter((f) => f.owners === 1).length
+
+  // ── Flores em competição por raridade ──
+  const emMissaoMembers = members.filter((m) => m.status === "Em Missão")
+  const floresEmComp = new Set(emMissaoMembers.flatMap((m) => m.favorites))
+  const compByRarity = [
+    { label: "❤️ UR",  value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "❤️ UR").length,  color: "#c0304a", bg: "#fde8ef" },
+    { label: "💛 SSR", value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💛 SSR").length, color: "#b07010", bg: "#fef6e0" },
+    { label: "💜 SR",  value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💜 SR").length,  color: "#7040b0", bg: "#f0eafb" },
+    { label: "💙 R",   value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💙 R").length,   color: "#2060c0", bg: "#eff6ff" },
+    { label: "💚 N",   value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💚 N").length,   color: "#15803d", bg: "#f0fdf4" },
+  ].filter((d) => d.value > 0)
+
+  // ── Status das floristas ──
+  const statusData = [
+    { label: "Em Missão", value: members.filter((m) => m.status === "Em Missão").length, color: "#22c55e", bg: "#DCFCE7" },
+    { label: "Concluiu",  value: members.filter((m) => m.status === "Concluiu").length,  color: "#60a5fa", bg: "#EFF6FF" },
+    { label: "Pausada",   value: members.filter((m) => m.status === "Pausada").length,   color: "#f59e0b", bg: "#FEF3C7" },
+    { label: "Fora",      value: members.filter((m) => m.status === "Fora").length,      color: "#94a3b8", bg: "#F1F5F9" },
+  ].filter((d) => d.value > 0)
 
   const progressItems = [
     { label: "Flores coletadas",   value: coletadas,      total: flowers.length, color: "#34d399" },
@@ -187,16 +204,13 @@ export default function AnalyticsView({ flowers, members, onStatClick, onSelectF
     { label: "Flores Únicas",      value: unicasCount,    total: flowers.length, color: "#d4608a" },
   ]
 
-
   // Flores mais usadas nas competições (quem está Em Missão)
   const flowerMissionCount: Record<string, number> = {}
-  members
-    .filter((m) => m.status === "Em Missão")
-    .forEach((m) => {
-      m.favorites.forEach((name) => {
-        flowerMissionCount[name] = (flowerMissionCount[name] ?? 0) + 1
-      })
+  emMissaoMembers.forEach((m) => {
+    m.favorites.forEach((name) => {
+      flowerMissionCount[name] = (flowerMissionCount[name] ?? 0) + 1
     })
+  })
 
   const topByMission = Object.entries(flowerMissionCount)
     .sort((a, b) => b[1] - a[1])
@@ -213,7 +227,6 @@ export default function AnalyticsView({ flowers, members, onStatClick, onSelectF
     { icon: "🌿", label: "Ninguém tem",             value: naoColetadas,                                                         color: "#059669", bg: "#F0FDF4", modal: "sem_dono"  },
     { icon: "❤️", label: "UR na guilda",            value: flowers.filter((f) => f.rarity === "❤️ UR" && f.owners > 0).length,  color: "#c0304a", bg: "#fde8ef", modal: "ur"        },
     { icon: "💛", label: "SSR na guilda",           value: flowers.filter((f) => f.rarity === "💛 SSR" && f.owners > 0).length, color: "#b07010", bg: "#fef6e0", modal: "ssr"       },
-    // Dados de popularidade integrados
     { icon: "🔴", label: "Só 1 dona (exclusiva)",  value: flowers.filter((f) => f.owners === 1).length,                        color: "#d4608a", bg: "#FFF0F5", modal: "unicas"    },
     { icon: "🟡", label: "Poucas donas (2-3)",     value: flowers.filter((f) => f.owners >= 2 && f.owners <= 3).length,        color: "#b07010", bg: "#fef6e0", modal: "flores"    },
     { icon: "🟢", label: "Muitas donas (4+)",      value: flowers.filter((f) => f.owners >= 4).length,                         color: "#15803d", bg: "#f0fdf4", modal: "flores"    },
@@ -229,13 +242,13 @@ export default function AnalyticsView({ flowers, members, onStatClick, onSelectF
           </p>
         </div>
 
-        {/* Donuts — coluna em mobile, lado a lado em desktop */}
+        {/* Donuts estratégicos */}
         <div className="analytics-row">
-          <Card title="🌿 Flores por Tier (coletadas)" delay={0}>
-            <DonutChart data={tierData} label="flores" />
+          <Card title="🎯 Flores em Competição por Raridade" delay={0}>
+            <DonutChart data={compByRarity} label={`${floresEmComp.size} flores`} />
           </Card>
-          <Card title="📊 Popularidade na Guilda (nº de donos)" delay={0.06}>
-            <DonutChart data={ownershipData} label="flores" />
+          <Card title="🧑‍🌾 Status das Floristas" delay={0.06}>
+            <DonutChart data={statusData} label={`${members.length} floristas`} />
           </Card>
         </div>
 
@@ -346,10 +359,10 @@ export default function AnalyticsView({ flowers, members, onStatClick, onSelectF
         {/* Flores Prioritárias — dois cards lado a lado */}
         <div className="analytics-row">
           <Card title="🌱 Canteiro — Menos Possuídas" delay={0.2}>
-            <OriginFlowers flowers={flowers} origin="Canteiro" color="#15803d" bg="#f0fdf4" border="#86efac" />
+            <OriginFlowers flowers={flowers} origin="Canteiro" color="#15803d" bg="#f0fdf4" border="#86efac" onSelectFlower={onSelectFlower} />
           </Card>
           <Card title="🛒 Mercado de Flores — Menos Possuídas" delay={0.24}>
-            <OriginFlowers flowers={flowers} origin="Mercado de Flores" color="#7040b0" bg="#f5f0ff" border="#d4bff5" />
+            <OriginFlowers flowers={flowers} origin="Mercado de Flores" color="#7040b0" bg="#f5f0ff" border="#d4bff5" onSelectFlower={onSelectFlower} />
           </Card>
         </div>
       </div>

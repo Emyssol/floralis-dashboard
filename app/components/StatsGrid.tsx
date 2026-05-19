@@ -25,34 +25,28 @@ interface Props {
   flowers: Flower[]
   members: Member[]
   onStatClick: (type: StatModalType) => void
+  onTabChange?: (tab: string) => void
 }
 
-export default function StatsGrid({ flowers, members, onStatClick }: Props) {
+export default function StatsGrid({ flowers, members, onStatClick, onTabChange }: Props) {
   const rarasColetadas = flowers.filter((f) =>
     ["❤️ UR", "💛 SSR", "💜 SR"].includes(f.rarity) && f.owners > 0
   ).length
-  const uniqueCount   = flowers.filter((f) => f.owners === 1).length
   const emMissaoCount = members.filter((m) => m.status === "Em Missão").length
-  const ownedCount    = flowers.filter((f) => f.owners > 0).length
-  const colecaoPct    = flowers.length ? Math.round((ownedCount / flowers.length) * 100) : 0
 
   const c1 = useCountUp(flowers.length)
   const c2 = useCountUp(members.length)
   const c3 = useCountUp(rarasColetadas)
-  const c4 = useCountUp(uniqueCount)
   const c5 = useCountUp(emMissaoCount)
-  const c6 = useCountUp(colecaoPct)
 
   const stats: {
     icon: string; value: number | string; label: string
     color: string; type: StatModalType
   }[] = [
-    { icon: "🌺", value: c1,      label: "TOTAL DE FLORES",    color: "#d4608a", type: "flores"    },
-    { icon: "🧑‍🌾", value: c2,     label: "FLORISTAS",          color: "#7040b0", type: "floristas" },
-    { icon: "💜", value: c3,      label: "RARAS COLETADAS",    color: "#7040b0", type: "ssr"       },
-    { icon: "✨", value: c4,      label: "FLORES ÚNICAS",      color: "#6040a0", type: "unicas"    },
-    { icon: "🎯", value: c5,      label: "EM MISSÃO",        color: "#15803d", type: "missoes"  },
-    { icon: "🎯", value: `${c6}%`,label: "COLEÇÃO COMPLETA",   color: "#1a8a3a", type: "colecao"   },
+    { icon: "🌺", value: c1, label: "TOTAL DE FLORES",  color: "#d4608a", type: "flores"    },
+    { icon: "🧑‍🌾", value: c2, label: "FLORISTAS",       color: "#7040b0", type: "floristas" },
+    { icon: "💜", value: c3, label: "RARAS COLETADAS",  color: "#7040b0", type: "ssr"       },
+    { icon: "🎯", value: c5, label: "EM MISSÃO",        color: "#15803d", type: "missoes"   },
   ]
 
   return (
@@ -61,7 +55,13 @@ export default function StatsGrid({ flowers, members, onStatClick }: Props) {
         {stats.map((s, i) => (
           <motion.button
             key={s.label}
-            onClick={() => onStatClick(s.type)}
+            onClick={() => {
+              if (s.type === "floristas" && onTabChange) {
+                onTabChange("floristas")
+              } else {
+                onStatClick(s.type)
+              }
+            }}
             style={{
               background: "white",
               border: "1px solid #f0dded",
@@ -91,12 +91,12 @@ export default function StatsGrid({ flowers, members, onStatClick }: Props) {
       <style>{`
         .stats-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 8px;
         }
         @media (min-width: 768px) {
           .stats-grid {
-            grid-template-columns: repeat(6, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
           }
         }
