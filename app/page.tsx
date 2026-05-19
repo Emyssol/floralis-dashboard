@@ -4,7 +4,6 @@ import { notion } from "@/app/lib/notion"
 import Dashboard from "@/app/components/Dashboard"
 import type { Flower, Member } from "@/app/lib/types"
 
-/** Busca TODAS as páginas de uma database (paginação automática) */
 async function queryAll(database_id: string) {
   const results: any[] = []
   let cursor: string | undefined = undefined
@@ -20,7 +19,6 @@ async function queryAll(database_id: string) {
   return results
 }
 
-/** Busca todos os IDs de uma relation paginada (Notion limita a 25 por padrão) */
 async function getRelationIds(pageId: string, propertyId: string): Promise<string[]> {
   try {
     const ids: string[] = []
@@ -28,9 +26,7 @@ async function getRelationIds(pageId: string, propertyId: string): Promise<strin
       page_id: pageId,
       property_id: propertyId,
     })
-
     while (true) {
-      // Formato paginado
       const items: any[] = data.results ?? []
       for (const item of items) {
         const id = item?.relation?.id ?? item?.id
@@ -44,19 +40,15 @@ async function getRelationIds(pageId: string, propertyId: string): Promise<strin
         })
       } else break
     }
-
-    // Formato direto (array simples)
     if (ids.length === 0 && Array.isArray(data.relation)) {
       return data.relation.map((r: any) => r.id)
     }
-
     return ids
   } catch {
     return []
   }
 }
 
-/** Remove emoji/espaço do início de uma string */
 function stripEmoji(str: string) {
   return str.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "").trim() || str
 }
@@ -67,19 +59,45 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
     queryAll(process.env.NOTION_MEMBERS_DB!),
   ])
 
-  // IDs das propriedades (pega do primeiro item para usar no retrieve)
   const firstFlower = flowerPages[0]
   const firstMember = memberPages[0]
   const quemTemPropId   = firstFlower?.properties["👑 Quem tem"]?.id
   const floresPropId    = firstMember?.properties["🌸 Flores que tem"]?.id
-  const favsPropId      = firstMember?.properties["💎 Flores preferidas"]?.id
+  // ── Campo de competição: tenta variações do nome para garantir compatibilidade ──
+  // Busca a chave real do campo independente do emoji exato
+  function findCompProp(props: any): any {
+    // Tenta nomes possíveis
+    const candidates = [
+      "🌿 Flores para Competição",
+      "🌱 Flores para Competição",
+      "💎 Flores preferidas",
+      "🌿 Flores para Competicao",
+    ]
+    for (const key of candidates) {
+      if (props[key]) return { key, prop: props[key] }
+    }
+    // Fallback: busca qualquer campo relation que contenha "Competição" ou "preferidas"
+    for (const [key, val] of Object.entries(props)) {
+      if (
+        (key.includes("Competi") || key.includes("preferida")) &&
+        (val as any).type === "relation"
+      ) {
+        return { key, prop: val }
+      }
+    }
+    return null
+  }
 
-  // ── Flores: busca owners real via relation paginada ──
+  const compPropId = (() => {
+    const found = firstMember ? findCompProp(firstMember.properties) : null
+    return found?.prop?.id ?? null
+  })()
+
+  // ── Flores ──
   const flowers: Flower[] = await Promise.all(
     flowerPages.map(async (page: any) => {
       const props = page.properties
 
-      // owners: tenta pegar direto; se has_more, busca paginado
       let owners = props["👑 Quem tem"]?.relation?.length ?? 0
       if (props["👑 Quem tem"]?.has_more && quemTemPropId) {
         const ids = await getRelationIds(page.id, quemTemPropId)
@@ -88,26 +106,25 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
 
       return {
         id: page.id,
-        name: props["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa",
+        name:   props["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa",
         rarity: props["💗 Raridade"]?.select?.name || "💚 N",
         origin: props["🛒 Origem"]?.select?.name || "Desconhecida",
         points: props["⭐ Pontuação Base"]?.number || 0,
         owners,
         image:
+          props["📷 Foto da Flor"]?.files?.[0]?.file?.url ||
+          props["📷 Foto da Flor"]?.files?.[0]?.external?.url ||
           page.cover?.file?.url ||
           page.cover?.external?.url ||
-          props["🖼️ Imagem"]?.files?.[0]?.file?.url ||
-          props["🖼️ Imagem"]?.files?.[0]?.external?.url ||
           null,
       }
     })
   )
 
-  // Mapa ID → nome da flor
   const flowerById: Record<string, string> = {}
   flowers.forEach((f) => { flowerById[f.id] = f.name })
 
-  // ── Membros: busca relations paginadas ──
+  // ── Membros ──
   const members: Member[] = await Promise.all(
     memberPages.map(async (page: any) => {
       const props = page.properties
@@ -116,7 +133,7 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
       const statusRaw =
         props["⚔️ Status na competição"]?.select?.name ||
         props["⚔️ Status na competição"]?.status?.name ||
-        "Offline"
+        "Fora"
 
       // Flores que tem
       let flowerIds: string[] = props["🌸 Flores que tem"]?.relation?.map((r: any) => r.id) ?? []
@@ -124,24 +141,26 @@ async function getData(): Promise<{ flowers: Flower[]; members: Member[] }> {
         flowerIds = await getRelationIds(page.id, floresPropId)
       }
 
-      // Flores preferidas
-      let favIds: string[] = props["💎 Flores preferidas"]?.relation?.map((r: any) => r.id) ?? []
-      if (props["💎 Flores preferidas"]?.has_more && favsPropId) {
-        favIds = await getRelationIds(page.id, favsPropId)
+      // 🌿 Flores para Competição — busca flexível independente do emoji exato
+      const compFound = findCompProp(props)
+      let compIds: string[] = compFound?.prop?.relation?.map((r: any) => r.id) ?? []
+      if (compFound?.prop?.has_more && compPropId) {
+        compIds = await getRelationIds(page.id, compPropId)
       }
 
       return {
-        id: page.id,
-        name: props["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista",
+        id:     page.id,
+        name:   props["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista",
         cargo:  stripEmoji(cargoRaw),
         status: stripEmoji(statusRaw),
         avatar:
           props["🖼️ Avatar"]?.files?.[0]?.file?.url ||
           props["🖼️ Avatar"]?.files?.[0]?.external?.url ||
           null,
-        bio: props["📝 Bio"]?.rich_text?.[0]?.plain_text || "",
+        bio:       props["📝 Bio"]?.rich_text?.[0]?.plain_text || "",
         flowers:   flowerIds.map((id) => flowerById[id]).filter(Boolean) as string[],
-        favorites: favIds.map((id)    => flowerById[id]).filter(Boolean) as string[],
+        // favorites agora mapeia Flores para Competição
+        favorites: compIds.map((id) => flowerById[id]).filter(Boolean) as string[],
       }
     })
   )

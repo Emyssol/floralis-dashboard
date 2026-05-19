@@ -13,7 +13,7 @@ interface Props {
 
 const rarityOrder = ["❤️ UR", "💛 SSR", "💜 SR", "💙 R", "💚 N"]
 
-const ADMIN_WHATSAPP = "5561999743006"
+const GROUP_LINK = "https://chat.whatsapp.com/DbLt8fkrqgiIiot7oZh8BN"
 
 const cargoStyle: Record<string, { bg: string; color: string; icon: string }> = {
   Líder:       { bg: "#FEF3C7", color: "#B07010", icon: "👑" },
@@ -73,7 +73,7 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
       list.map((n, i) => `${i + 1}. ${n}`).join("\n") +
       `\n\nPor favor atualize no Notion! 💕`
     )
-    window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${msg}`, "_blank")
+    navigator.clipboard.writeText(decodeURIComponent(msg)).catch(() => {}); window.open(GROUP_LINK, "_blank")
     setSent(true)
     setTimeout(() => {
       setSent(false)
@@ -187,8 +187,8 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                 <p style={{ fontSize: 13, fontWeight: 900, color: "#3a2a3a", margin: 0 }}>
-                  💎 Flores Preferidas desta Semana
-                  <span style={{ fontSize: 11, fontWeight: 500, color: "#c4a8c4", marginLeft: 6 }}>(usadas nas missões)</span>
+                  🌿 Flores para Competição
+                  <span style={{ fontSize: 11, fontWeight: 500, color: "#c4a8c4", marginLeft: 6 }}>(esta semana)</span>
                 </p>
                 {/* Botão editar */}
                 {!editingFavs && (
@@ -263,7 +263,7 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                       }}>
                         <p style={{ fontSize: 28, margin: 0 }}>✅</p>
                         <p style={{ fontSize: 13, fontWeight: 700, color: "#15803d", marginTop: 8 }}>
-                          WhatsApp aberto! Confirme o envio por lá.
+                          Mensagem copiada! Cole no grupo do WhatsApp.
                         </p>
                       </div>
                     ) : (

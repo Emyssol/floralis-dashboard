@@ -22,7 +22,8 @@ const titles: Record<NonNullable<StatModalType>, { icon: string; label: string; 
   ssr:             { icon: "💛", label: "Flores SSR na Guilda",       color: "#b07010" },
   unicas:          { icon: "✨", label: "Flores Exclusivas (1 dono)", color: "#6040a0" },
   colecao:         { icon: "🎯", label: "Progresso da Coleção",       color: "#1a8a3a" },
-  sem_dono:        { icon: "🌿", label: "Flores que Ninguém Tem",            color: "#059669" },
+  sem_dono:        { icon: "🌿", label: "Flores que Ninguém Tem",     color: "#059669" },
+  missoes:         { icon: "🎯", label: "Em Missão",                  color: "#15803d" },
 }
 
 function FlowerTag({ f, cfg }: { f: Flower; cfg: { bg: string; color: string } | undefined }) {
@@ -118,6 +119,7 @@ export default function StatsModal({ type, flowers, members, onClose }: Props) {
           {type === "unicas"    && <UnicasContent flowers={flowers} members={members} />}
           {type === "colecao"   && <ColecaoContent flowers={flowers} />}
           {type === "sem_dono"  && <SemDonoContent flowers={flowers} />}
+          {type === "missoes"   && <MissoesContent members={members} flowers={flowers} />}
         </div>
       </motion.div>
     </motion.div>
@@ -350,6 +352,74 @@ function ColecaoContent({ flowers }: { flowers: Flower[] }) {
                 transition={{ duration: 0.8, ease: "easeOut" }}
               />
             </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MissoesContent({ members, flowers }: { members: Member[]; flowers: Flower[] }) {
+  const statusConfig: Record<string, { bg: string; color: string; dot: string }> = {
+    "Em Missão": { bg: "#DCFCE7", color: "#15803D", dot: "#22c55e" },
+    "Concluiu":  { bg: "#EFF6FF", color: "#2060C0", dot: "#60a5fa" },
+    "Pausada":   { bg: "#FEF3C7", color: "#B45309", dot: "#f59e0b" },
+    "Fora":      { bg: "#F1F5F9", color: "#64748B", dot: "#94a3b8" },
+  }
+
+  const active = members
+    .filter((m) => m.status === "Em Missão")
+    .map((m) => ({
+      member: m,
+      compFlowers: flowers.filter((f) => m.favorites.includes(f.name)),
+    }))
+    .sort((a, b) => b.compFlowers.length - a.compFlowers.length)
+
+  if (active.length === 0) return (
+    <p style={{ padding: "32px 0", textAlign: "center", fontWeight: 700, color: "#b89ab8" }}>
+      Nenhuma florista Em Missão no momento
+    </p>
+  )
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <p style={{ fontSize: 12, fontWeight: 600, color: "#9a7ab0", margin: "0 0 4px" }}>
+        {active.length} floristas atualmente Em Missão:
+      </p>
+      {active.map(({ member, compFlowers }) => {
+        const cfg = statusConfig["Em Missão"]
+        return (
+          <div key={member.id} style={{
+            display: "flex", alignItems: "center", gap: 12,
+            background: "#DCFCE733", border: "1px solid #86efac44",
+            borderRadius: 14, padding: "10px 14px",
+          }}>
+            {member.avatar ? (
+              <img src={member.avatar} alt={member.name} style={{ width: 36, height: 36, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+            ) : (
+              <div style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                background: "linear-gradient(135deg, #f9d0e0, #e8d4f8)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, fontWeight: 900, color: "white",
+              }}>
+                {member.name.slice(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontWeight: 800, color: "#3a2a3a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {member.name}
+              </p>
+              <p style={{ fontSize: 11, color: "#15803d", fontWeight: 600, margin: 0 }}>
+                {compFlowers.length > 0
+                  ? `${compFlowers.length} flor${compFlowers.length > 1 ? "es" : ""} na competição`
+                  : "Sem flores cadastradas"}
+              </p>
+            </div>
+            <span style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.dot}44`, borderRadius: 999, padding: "2px 9px", fontSize: 11, fontWeight: 800, display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: cfg.dot, display: "inline-block" }} />
+              Em Missão
+            </span>
           </div>
         )
       })}

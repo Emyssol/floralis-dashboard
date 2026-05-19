@@ -8,11 +8,12 @@ interface TabsProps {
 }
 
 const tabs = [
+  { id: "missoes",   label: "🎯 Missões"    },
+  { id: "floristas", label: "🧑‍🌾 Floristas"  },
+  { id: "graficos",  label: "📊 Gráficos"   },
   { id: "colecao",   label: "🌸 Coleção"    },
   { id: "raras",     label: "⭐ Mais Raras"  },
   { id: "populares", label: "🌻 Populares"   },
-  { id: "graficos",  label: "📊 Gráficos"   },
-  { id: "floristas", label: "🧑‍🌾 Floristas"  },
 ]
 
 export default function Tabs({ activeTab, setActiveTab }: TabsProps) {

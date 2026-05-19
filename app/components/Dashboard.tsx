@@ -16,13 +16,14 @@ import RareView from "@/app/components/RareView"
 import AnalyticsView from "@/app/components/AnalyticsView"
 import PopularesView from "@/app/components/PopularesView"
 import FloristasView from "@/app/components/FloristasView"
+import MissoesView from "@/app/components/MissoesView"
 import SpotlightSearch from "@/app/components/SpotlightSearch"
 
 import type { Flower, Member } from "@/app/lib/types"
 
 export type StatModalType =
   | "flores" | "floristas" | "ur" | "ssr"
-  | "unicas" | "colecao" | "sem_dono" | null
+  | "unicas" | "colecao" | "sem_dono" | "missoes" | null
 
 interface DashboardProps {
   flowers: Flower[]
@@ -30,7 +31,7 @@ interface DashboardProps {
 }
 
 export default function Dashboard({ flowers, members }: DashboardProps) {
-  const [activeTab, setActiveTab]           = useState("colecao")
+  const [activeTab, setActiveTab]           = useState("missoes")
   const [search, setSearch]                 = useState("")
   const [selectedRarity, setSelectedRarity] = useState("ALL")
   const [selectedOrigin, setSelectedOrigin] = useState("ALL")
@@ -59,7 +60,14 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
   const filteredMembers = useMemo(() => {
     const q = search.toLowerCase()
     if (!q) return members
-    return members.filter((m) => m.name.toLowerCase().includes(q))
+    return members.filter((m) =>
+      // Nome da florista
+      m.name.toLowerCase().includes(q) ||
+      // Tem uma flor com esse nome na coleção
+      m.flowers.some((f) => f.toLowerCase().includes(q)) ||
+      // Tem uma flor com esse nome na competição
+      m.favorites.some((f) => f.toLowerCase().includes(q))
+    )
   }, [members, search])
 
   const isSpotlight =
@@ -140,8 +148,10 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
 
           {activeTab === "raras"     && <RareView flowers={flowers} onSelect={setSelectedFlower} />}
           {activeTab === "populares" && <PopularesView flowers={flowers} members={members} onSelect={setSelectedFlower} />}
-          {activeTab === "graficos"  && <AnalyticsView flowers={flowers} members={members} onStatClick={setStatModal} />}
-          {activeTab === "floristas" && <FloristasView flowers={flowers} members={filteredMembers} onSelectMember={setSelectedMember} />}
+          {activeTab === "graficos"  && <AnalyticsView flowers={flowers} members={members} onStatClick={setStatModal} onSelectFlower={setSelectedFlower} />}
+          {activeTab === "missoes" && <MissoesView flowers={flowers} members={members} search={search} onSelectMember={setSelectedMember} onSelectFlower={setSelectedFlower} />
+        }
+        {activeTab === "floristas" && <FloristasView flowers={flowers} members={filteredMembers} onSelectMember={setSelectedMember} />}
         </div>
       </div>
 

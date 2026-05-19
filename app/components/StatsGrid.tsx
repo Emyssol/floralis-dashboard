@@ -32,7 +32,7 @@ export default function StatsGrid({ flowers, members, onStatClick }: Props) {
     ["❤️ UR", "💛 SSR", "💜 SR"].includes(f.rarity) && f.owners > 0
   ).length
   const uniqueCount   = flowers.filter((f) => f.owners === 1).length
-  const faltandoCount = flowers.filter((f) => f.owners === 0).length
+  const emMissaoCount = members.filter((m) => m.status === "Em Missão").length
   const ownedCount    = flowers.filter((f) => f.owners > 0).length
   const colecaoPct    = flowers.length ? Math.round((ownedCount / flowers.length) * 100) : 0
 
@@ -40,7 +40,7 @@ export default function StatsGrid({ flowers, members, onStatClick }: Props) {
   const c2 = useCountUp(members.length)
   const c3 = useCountUp(rarasColetadas)
   const c4 = useCountUp(uniqueCount)
-  const c5 = useCountUp(faltandoCount)
+  const c5 = useCountUp(emMissaoCount)
   const c6 = useCountUp(colecaoPct)
 
   const stats: {
@@ -51,7 +51,7 @@ export default function StatsGrid({ flowers, members, onStatClick }: Props) {
     { icon: "🧑‍🌾", value: c2,     label: "FLORISTAS",          color: "#7040b0", type: "floristas" },
     { icon: "💜", value: c3,      label: "RARAS COLETADAS",    color: "#7040b0", type: "ssr"       },
     { icon: "✨", value: c4,      label: "FLORES ÚNICAS",      color: "#6040a0", type: "unicas"    },
-    { icon: "📦", value: c5,      label: "NINGUÉM TEM",        color: "#b07010", type: "sem_dono"  },
+    { icon: "🎯", value: c5,      label: "EM MISSÃO",        color: "#15803d", type: "missoes"  },
     { icon: "🎯", value: `${c6}%`,label: "COLEÇÃO COMPLETA",   color: "#1a8a3a", type: "colecao"   },
   ]
 

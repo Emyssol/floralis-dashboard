@@ -9,6 +9,7 @@ interface Props {
   flowers: Flower[]
   members: Member[]
   onStatClick: (type: StatModalType) => void
+  onSelectFlower?: (f: Flower) => void
 }
 
 // ── Donut SVG ──
@@ -159,7 +160,7 @@ function OriginFlowers({ flowers, origin, color, bg, border }: {
   )
 }
 
-export default function AnalyticsView({ flowers, members, onStatClick }: Props) {
+export default function AnalyticsView({ flowers, members, onStatClick, onSelectFlower }: Props) {
   const coletadas    = flowers.filter((f) => f.owners > 0).length
   const naoColetadas = flowers.filter((f) => f.owners === 0).length
 
@@ -187,8 +188,24 @@ export default function AnalyticsView({ flowers, members, onStatClick }: Props) 
   ]
 
 
-  const topByOwners = [...flowers].filter((f) => f.owners > 0).sort((a, b) => b.owners - a.owners).slice(0, 8)
-  const maxOwners = topByOwners[0]?.owners ?? 1
+  // Flores mais usadas nas competições (quem está Em Missão)
+  const flowerMissionCount: Record<string, number> = {}
+  members
+    .filter((m) => m.status === "Em Missão")
+    .forEach((m) => {
+      m.favorites.forEach((name) => {
+        flowerMissionCount[name] = (flowerMissionCount[name] ?? 0) + 1
+      })
+    })
+
+  const topByMission = Object.entries(flowerMissionCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([name, count]) => ({
+      flower: flowers.find((f) => f.name === name),
+      name,
+      count,
+    }))
 
   const visaoGeral: { icon: string; label: string; value: number; color: string; bg: string; modal: StatModalType }[] = [
     { icon: "🌸", label: "Total de flores",        value: flowers.length,                                                       color: "#d4608a", bg: "#FFF0F5", modal: "flores"    },
@@ -247,13 +264,55 @@ export default function AnalyticsView({ flowers, members, onStatClick }: Props) 
 
         {/* Populares + Visão Geral */}
         <div className="analytics-row">
-          <Card title="👥 Flores Mais Populares" delay={0.14}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {topByOwners.map((f) => {
-                const cfg = rarityConfig[f.rarity as keyof typeof rarityConfig]
-                return <HBar key={f.id} label={f.name} value={f.owners} max={maxOwners} color={cfg?.color ?? "#d4608a"} />
+          <Card title="🎯 Flores Mais Usadas nas Missões" delay={0.14}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {topByMission.length === 0 && (
+                <p style={{ fontSize: 13, color: "#c4a8c4" }}>Nenhuma florista Em Missão no momento</p>
+              )}
+              {topByMission.map(({ flower, name, count }, i) => {
+                const cfg = flower ? rarityConfig[flower.rarity as keyof typeof rarityConfig] : null
+                const maxCount = topByMission[0]?.count ?? 1
+                const pct = (count / maxCount) * 100
+                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null
+                return (
+                  <div key={name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: medal ? 14 : 10, fontWeight: 900, width: 20, flexShrink: 0, textAlign: "center", color: medal ? undefined : "#c4a8c4" }}>
+                      {medal ?? `#${i + 1}`}
+                    </span>
+                    {cfg && (
+                      <span style={{ background: cfg.bg, color: cfg.color, borderRadius: 999, padding: "1px 6px", fontSize: 9, fontWeight: 800, flexShrink: 0 }}>
+                        {flower?.rarity.split(" ")[1]}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => flower && onSelectFlower?.(flower)}
+                      style={{
+                        flex: 1, fontSize: 12, fontWeight: 600, color: flower && onSelectFlower ? "#d4608a" : "#3a2a3a",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        background: "none", border: "none", padding: 0,
+                        cursor: flower && onSelectFlower ? "pointer" : "default",
+                        textAlign: "left",
+                        textDecoration: flower && onSelectFlower ? "underline" : "none",
+                        textDecorationStyle: "dotted",
+                      }}
+                      title={name}
+                    >{name}</button>
+                    {/* Barra */}
+                    <div style={{ width: 70, height: 6, borderRadius: 999, background: "#f0e8ee", overflow: "hidden", flexShrink: 0 }}>
+                      <motion.div
+                        style={{ height: "100%", borderRadius: 999, background: cfg?.color ?? "#d4608a" }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.7, ease: "easeOut" }}
+                      />
+                    </div>
+                    {/* Contador */}
+                    <span style={{ fontSize: 12, fontWeight: 900, color: cfg?.color ?? "#d4608a", flexShrink: 0, width: 24, textAlign: "right" }}>
+                      {count}×
+                    </span>
+                  </div>
+                )
               })}
-              {topByOwners.length === 0 && <p style={{ fontSize: 13, color: "#b89ab8" }}>Nenhuma flor com donos ainda</p>}
             </div>
           </Card>
 

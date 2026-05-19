@@ -32,6 +32,7 @@ export default function SpotlightSearch({ flowers, members, onSelect, onSelectMe
         const rarity     = rarityConfig[flower.rarity as keyof typeof rarityConfig]
         const owners     = members.filter((m) => m.flowers.includes(flower.name))
         const nonOwners  = members.filter((m) => !m.flowers.includes(flower.name))
+        const inMission  = members.filter((m) => m.status === "Em Missão" && m.favorites.includes(flower.name))
         const popularity = members.length > 0 ? flower.owners / members.length : 0
         const ownership  = ownershipLabel(flower.owners, members.length)
 
@@ -152,21 +153,21 @@ export default function SpotlightSearch({ flowers, members, onSelect, onSelectMe
                 )}
               </div>
 
-              {/* ❌ Quem não tem */}
+              {/* 🎯 Usando na competição */}
               <div>
                 <p style={{ fontSize: 12, fontWeight: 800, color: "#d4608a", marginBottom: 10, display: "flex", alignItems: "center", gap: 4 }}>
-                  ❌ Quem ainda não tem ({nonOwners.length}):
+                  🎯 Usando na competição ({inMission.length}):
                 </p>
-                {nonOwners.length === 0 ? (
-                  <p style={{ fontSize: 12, color: "#b89ab8", fontWeight: 600 }}>Todas as floristas têm! 🎉</p>
+                {inMission.length === 0 ? (
+                  <p style={{ fontSize: 12, color: "#b89ab8", fontWeight: 600 }}>Ninguém está usando nas missões</p>
                 ) : (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {nonOwners.map((m) => (
+                    {inMission.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => onSelectMember(m)}
                         style={{
-                          background: "#FFF0F5", color: "#9a7ab0",
+                          background: "#FFF0F5", color: "#d4608a",
                           border: "1px solid #f9c8dc",
                           borderRadius: 999, padding: "3px 10px",
                           fontSize: 12, fontWeight: 700,
@@ -177,7 +178,7 @@ export default function SpotlightSearch({ flowers, members, onSelect, onSelectMe
                         <span style={{
                           width: 18, height: 18, borderRadius: "50%",
                           background: "#f9c8dc",
-                          fontSize: 9, fontWeight: 900, color: "#9a7ab0",
+                          fontSize: 9, fontWeight: 900, color: "#d4608a",
                           display: "inline-flex", alignItems: "center", justifyContent: "center",
                           flexShrink: 0,
                         }}>
