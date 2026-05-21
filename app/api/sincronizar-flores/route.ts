@@ -130,7 +130,7 @@ export async function GET() {
       const naoEncontradas: string[] = []
 
       for (const nomeFlor of floresNoPlan) {
-        const florId = resolveFlower(nomeFlor)
+        const florId = resolveFlower2(nomeFlor)
         if (!florId) { naoEncontradas.push(nomeFlor); continue }
         if (!floresNoNotion.has(florId)) aAdicionar.push(nomeFlor)
       }
