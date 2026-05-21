@@ -26,6 +26,56 @@ const PLANILHA: Record<string, string[]> = {
   "Cecilises": ["Blue Evening Primrose","Crimson Hollyhock","Pink Anemone","Pink Crystal Butterfly Rose","Pink Evening Primrose","Pink Hibiscus","Red Hollyhock","Red Winterberry","White Bunnycotton","White Flamingo Flower","Yellow Dancing Lady Orchid","Yellow Himalayan Poppy","Heartbeat Berry (Fruta Palpitante)","Merrycap (Capelo Alegre)","Pearl Magnolia","Scintilla Pact (Pacto Cintilante)"],
 }
 
+// Mapa de aliases: nome na planilha → nome real no Notion
+const ALIASES: Record<string, string> = {
+  // SSR
+  "Heartbeat Berry (Fruta Palpitante)": "Fruta Palpitante",
+  "Merrycap (Capelo Alegre)": "Capelo Alegre",
+  "Merrycak (Capelo Alegre)": "Capelo Alegre",
+  "Scintilla Pact (Pacto Cintilante)": "Pacto Cintilante",
+  "Hazeglow Fan (Leque de Brilho Enevoado)": "Leque de Brilho Enevoado",
+  "Warm Gold Abode (Morada de Ouro Quente)": "Morada de Ouro Quente",
+  "Flower Cake Basket (Cesto de Bolo e Flores)": "Cesto de Bolo de Flores",
+  "Silkbloom Fan (Leque de Flor de Seda)": "Leque de Flor de Seda",
+  "Stardust Fan (Leque de Poeira Estelar)": "Leque de Poeira Estelar",
+  "Dream-Painted Eggs (Ovos pintados de Sonho)": "Ovos Pintados de Sonho",
+  "Egg Surprise (Ovo Surpresa)": "Ovo Surpresa",
+  "Easter Teatime (Hora do Chá de Páscoa)": "Hora do Chá de Páscoa",
+  "Wavelet Swing (Balanço das Ondas)": "Balanço das Ondas",
+  "Pink Dream Shell (Conha dos Sonhos Rosa)": "Concha dos Sonhos Rosa",
+  "Golden Lion's Blessing (Bênção do Leão Dourado)": "Bênção do Leão Dourado",
+  "Pink Lion's Fortune (Fortuna do Leão Rosa)": "Fortuna do Leão Rosa",
+  "Purple Cloud Slumber (Sonho de Nuvem Roxa)": "Sono de Nuvem Roxa",
+  "Guilded Sweet Dream (Doce Sonho Dourado)": "Doce Sonho Dourado",
+  "Morada da flor rosa": "Morada da Flor Rosa",
+  // UR
+  "Dragon Grace (Graça do Dragão)": "Graça do Dragão",
+  "Lazy Hour (Hora Preguiçosa)": "Hora Preguiçosa",
+  "Pisces-Abyss (Abismo de Peixes)": "Abismo de Peixes (Pisces-Abyss)",
+  "Angel Plume (Pluma de Anjo)": "Pluma de Anjo",
+  "Sugarfrost Witch (Bruxa de Açúcar Cristalizado)": "Bruxa de Açúcar Cristalizado (Sugarfrost Witch)",
+  // SR
+  "Lunar Wisteria (Glicínia Lunar)": "Glicínia Lunar",
+  "Purple Snowflake (Floco de Neve Roxo)": "Floco de Neve Roxo",
+  "Pink Snowflake (Floco de Neve Rosa)": "Floco de Neve Rosa",
+  "Jade Snowflake (Floco de Neve de Jade)": "Floco de Neve de Jade",
+  "Smokepink Hibiscus (Hibisco Esfumaçado)": "Hibisco Esfumaçado",
+  "Sapphirebone Coral (Coral Osso de Safira)": "Coral Osso de Safira",
+  "Stellar Wish (Desejo Estelar)": "Desejo Estelar",
+  "Sunflare Bloom (Flor da Erupção Solar)": "Flor da Erupção Solar",
+  "Sunlit Petal (Pétala Iluminada pelo Sol)": "Pétala Iluminada pelo Sol",
+  "Yellow Bumble Rose (Rosa Zangão Amarela)": "Rosa Zangão Amarela",
+  "Yellow Green Boat Orchid": "Yellow-Green Boat Orchid",
+  "Azure Nemesia (Nemésia Azul-celeste)": "Nemésia Azul-celeste",
+  "Pink Baby Primrose (Pequena Prímula Rosa)": "Pequena Prímula Rosa",
+  "Purple Baby Primrose (Pequena Prímula Roxa)": "Pequena Prímula Roxa",
+  "Snowfall Baby Primrose (Pequena Prímula Nevada)": "Pequena Prímula Nevada",
+  "White Flamingo Flower": "White Flamingo Flower", // verificar se existe
+  "Yellow Dancing Lady Orchid": "Yellow Dancing Lady Orchid", // verificar
+  "Yellow Himalayan Poppy": "Yellow Himalayan Poppy", // verificar
+  "Yesterday Today Tomorrow": "Yesterday-Today-Tomorrow",
+}
+
 async function queryAll(database_id: string) {
   const results: any[] = []
   let cursor: string | undefined
@@ -46,10 +96,17 @@ export async function GET() {
     ])
 
     // Mapa nome normalizado → id da flor no Notion
-    const flowerByName: Record<string, string> = {}
+    const flowerByName2: Record<string, string> = {}
     for (const p of floresPags) {
       const nome = p.properties["🌸 Nome da Flor"]?.title?.[0]?.plain_text ?? ""
-      if (nome) flowerByName[nome.toLowerCase()] = p.id
+      if (nome) flowerByName2[nome.toLowerCase()] = p.id
+    }
+
+    function resolveFlower2(nome: string): string | null {
+      if (flowerByName2[nome.toLowerCase()]) return flowerByName2[nome.toLowerCase()]
+      const alias = ALIASES[nome]
+      if (alias && flowerByName2[alias.toLowerCase()]) return flowerByName2[alias.toLowerCase()]
+      return null
     }
 
     const resultado: { florista: string; flores_a_adicionar: string[]; flores_nao_encontradas: string[] }[] = []
@@ -73,7 +130,7 @@ export async function GET() {
       const naoEncontradas: string[] = []
 
       for (const nomeFlor of floresNoPlan) {
-        const florId = flowerByName[nomeFlor.toLowerCase()]
+        const florId = resolveFlower(nomeFlor)
         if (!florId) { naoEncontradas.push(nomeFlor); continue }
         if (!floresNoNotion.has(florId)) aAdicionar.push(nomeFlor)
       }
@@ -110,6 +167,13 @@ export async function POST(request: NextRequest) {
       if (nome) flowerByName[nome.toLowerCase()] = p.id
     }
 
+    function resolveFlower(nome: string): string | null {
+      if (flowerByName[nome.toLowerCase()]) return flowerByName[nome.toLowerCase()]
+      const alias = ALIASES[nome]
+      if (alias && flowerByName[alias.toLowerCase()]) return flowerByName[alias.toLowerCase()]
+      return null
+    }
+
     const log: { florista: string; adicionadas: string[]; nao_encontradas: string[] }[] = []
 
     for (const m of floristaPags) {
@@ -130,7 +194,7 @@ export async function POST(request: NextRequest) {
       const naoEncontradas: string[] = []
 
       for (const nomeFlor of floresNoPlan) {
-        const florId = flowerByName[nomeFlor.toLowerCase()]
+        const florId = resolveFlower(nomeFlor)
         if (!florId) { naoEncontradas.push(nomeFlor); continue }
         if (!idsAtuais.has(florId)) {
           novasRel.push({ id: florId })
@@ -142,15 +206,40 @@ export async function POST(request: NextRequest) {
         log.push({ florista: nick, adicionadas, nao_encontradas: naoEncontradas })
 
         if (confirmar === true) {
-          // Mantém as flores atuais + adiciona as novas
+          // Notion limita relations a 100 por request
+          // Enviamos as novas em lotes, mantendo as existentes
+          const todasRel = [...relAtual, ...novasRel]
+          const BATCH = 100
+
+          // Primeiro update: substitui com as primeiras 100
           await notion.pages.update({
             page_id: m.id,
             properties: {
               "🌸 Flores que tem": {
-                relation: [...relAtual, ...novasRel],
+                relation: todasRel.slice(0, BATCH),
               },
             },
           })
+
+          // Lotes seguintes: append das restantes
+          for (let i = BATCH; i < todasRel.length; i += BATCH) {
+            // Busca o estado atual para garantir consistência
+            const current: any = await notion.pages.retrieve({ page_id: m.id })
+            const currentRel: any[] = current.properties["🌸 Flores que tem"]?.relation ?? []
+            const currentIds = new Set(currentRel.map((r: any) => r.id))
+
+            const batch = todasRel.slice(i, i + BATCH).filter(r => !currentIds.has(r.id))
+            if (batch.length === 0) continue
+
+            await notion.pages.update({
+              page_id: m.id,
+              properties: {
+                "🌸 Flores que tem": {
+                  relation: [...currentRel, ...batch],
+                },
+              },
+            })
+          }
         }
       }
     }

@@ -2,109 +2,81 @@ export default function Header() {
   return (
     <>
       <header style={{
-        background: "linear-gradient(135deg, #fff8fb 0%, #fdf4ff 40%, #f8f6ff 70%, #f5f8ff 100%)",
-        borderBottom: "1px solid #f5e6f0",
-        position: "relative",
-        overflow: "hidden",
+        background: "rgba(255,248,251,0.90)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        borderBottom: "1px solid rgba(200,160,190,0.16)",
+        position: "relative", overflow: "hidden",
       }}>
-        {/* Flores decorativas direita */}
-        <div aria-hidden className="floral-deco" style={{
-          position: "absolute", right: 0, top: 0,
-          fontSize: 56, opacity: 0.15, lineHeight: 1,
-          padding: "6px 20px", userSelect: "none", pointerEvents: "none",
-          letterSpacing: 4,
-        }}>
-          🌸🌺🌼🌷
-        </div>
-        <div aria-hidden className="floral-deco" style={{
-          position: "absolute", right: 48, bottom: 0,
-          fontSize: 32, opacity: 0.10, userSelect: "none", pointerEvents: "none",
-        }}>
-          🌸🌼
-        </div>
+        {/* Brilho dourado — só desktop, opacity baixo */}
+        <img
+          src="/ornaments/brilho-dourado.png"
+          alt="" aria-hidden
+          className="hide-mobile"
+          style={{
+            position: "absolute", right: 0, top: 0,
+            height: "100%", width: "auto",
+            opacity: 0.10, objectFit: "contain",
+            objectPosition: "right center",
+            pointerEvents: "none",
+          }}
+        />
 
-        <div style={{ maxWidth: 1800, margin: "0 auto", padding: "clamp(10px,2vw,20px) clamp(16px,3vw,32px)", position: "relative" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "clamp(8px,2vw,16px)" }}>
+        <div style={{ maxWidth: 1800, margin: "0 auto", padding: "12px 20px", position: "relative" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
 
-            {/* Logo circular */}
+            {/* Logo */}
             <div style={{
-              width: "clamp(36px,5vw,48px)",
-              height: "clamp(36px,5vw,48px)",
-              borderRadius: "50%", flexShrink: 0,
-              background: "linear-gradient(135deg, #f9d0e0, #e8d4f8)",
-              boxShadow: "0 3px 12px rgba(212,96,138,0.18)",
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              background: "linear-gradient(135deg, #f5d0e0, #ddc8f4)",
+              border: "1px solid rgba(232,184,203,0.38)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "clamp(16px,3vw,22px)",
-            }}>🌸</div>
+              boxShadow: "0 2px 10px rgba(200,132,158,0.16)",
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C8849E" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2C6 2 2 6 2 12s4 10 10 10 10-4 10-10S18 2 12 2z"/>
+                <path d="M12 6c-1.5 0-3 .8-3.7 2.1-.7 1.3-.5 2.8.3 4C9.5 13.4 10.7 14 12 14s2.5-.6 3.4-1.9c.8-1.2 1-2.7.3-4C15 6.8 13.5 6 12 6z"/>
+                <path d="M12 14v4M9 16.5l3 1.5 3-1.5"/>
+              </svg>
+            </div>
 
             {/* Texto */}
             <div style={{ minWidth: 0, flex: 1 }}>
               <h1 style={{
-                fontSize: "clamp(13px,3vw,20px)",
-                fontWeight: 800,
-                color: "#3a2a3a",
-                lineHeight: 1.15,
-                letterSpacing: "-0.01em",
-                margin: 0,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
+                fontSize: "clamp(13px, 3.5vw, 18px)", fontWeight: 800, color: "#4D3750",
+                lineHeight: 1.2, margin: 0, whiteSpace: "nowrap",
+                overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "-0.01em",
               }}>
                 FLORALIS{" "}
-                <span style={{ color: "#d4608a", fontWeight: 400 }}>♡</span>{" "}
-                <span style={{ color: "#8a6ab0", fontWeight: 700 }}>The Cozy Florist</span>
+                <span style={{ color: "#C8849E", fontWeight: 400 }}>♡</span>{" "}
+                <span style={{ color: "#9B7FCC", fontWeight: 700 }}>The Cozy Florist</span>
               </h1>
-              <p style={{
-                fontSize: "clamp(7px,1.5vw,10px)",
-                fontWeight: 700,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                color: "#c4a8c4",
-                margin: "3px 0 0",
-              }}>Guild Collection Dashboard</p>
-              <p className="header-sub" style={{
-                fontSize: "clamp(9px,1.8vw,11px)",
-                fontWeight: 500,
-                color: "#b090c0",
-                margin: "2px 0 0",
-                letterSpacing: "0.01em",
-              }}>
-                🌿 Um catálogo mágico da nossa guilda de floristas encantadas
+              <p style={{ fontSize: "clamp(8px,1.5vw,9px)", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase", color: "#B8A0B8", margin: "2px 0 0" }}>
+                Guild Collection Dashboard
               </p>
             </div>
 
             {/* Badge ao vivo */}
-            <div style={{ flexShrink: 0, marginLeft: "auto" }}>
-              <span style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                background: "rgba(255,255,255,0.9)",
-                border: "1px solid #d4f0d4",
-                borderRadius: 999,
-                padding: "clamp(3px,1vw,5px) clamp(8px,2vw,12px)",
-                fontSize: "clamp(9px,1.8vw,11px)",
-                fontWeight: 600,
-                color: "#3a8a3a",
-                whiteSpace: "nowrap",
-                boxShadow: "0 1px 6px rgba(34,197,94,0.08)",
-              }}>
-                <span style={{
-                  width: 6, height: 6, borderRadius: "50%",
-                  background: "#22c55e",
-                  boxShadow: "0 0 5px #22c55e",
-                  display: "inline-block",
-                }} />
-                Conectado ao Notion · Dados ao vivo
-              </span>
-            </div>
+            <span style={{
+              display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0,
+              background: "rgba(255,255,255,0.74)", border: "1px solid rgba(180,230,180,0.48)",
+              borderRadius: 999, padding: "4px 12px",
+              fontSize: "clamp(9px,2vw,11px)", fontWeight: 600, color: "#4a8a5a",
+            }}>
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5cb87a", boxShadow: "0 0 5px rgba(92,184,122,0.55)", display: "inline-block", flexShrink: 0 }} />
+              <span className="badge-full">Conectado ao Notion · Dados ao vivo</span>
+              <span className="badge-short" style={{ display: "none" }}>Ao vivo</span>
+            </span>
           </div>
         </div>
       </header>
 
       <style>{`
         @media (max-width: 480px) {
-          .floral-deco { display: none !important; }
-          .header-sub { display: none !important; }
+          .badge-full { display: none !important; }
+          .badge-short { display: inline !important; }
         }
+        @media (min-width: 481px) { .badge-short { display: none !important; } }
       `}</style>
     </>
   )

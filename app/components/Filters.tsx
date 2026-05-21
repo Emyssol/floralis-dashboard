@@ -39,96 +39,68 @@ function getOriginIcon(o: string) {
 
 function pillStyle(active: boolean, activeColor: string, activeBg: string): React.CSSProperties {
   return active
-    ? { background: activeBg, color: activeColor, border: `1.5px solid ${activeColor}`, boxShadow: `0 2px 8px ${activeColor}33`, borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" as const, transition: "all 0.15s" }
-    : { background: "white", color: "#9a7ab0", border: "1px solid #f0dded", borderRadius: 999, padding: "3px 12px", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" as const, transition: "all 0.15s" }
+    ? {
+        background: activeBg, color: activeColor,
+        border: `1.5px solid ${activeColor}`,
+        boxShadow: `0 2px 8px ${activeColor}33`,
+        borderRadius: 999, padding: "4px 14px",
+        fontSize: 12, fontWeight: 800, cursor: "pointer",
+        whiteSpace: "nowrap" as const, transition: "all 0.15s",
+        flexShrink: 0,
+      }
+    : {
+        background: "white", color: "#9a7ab0",
+        border: "1px solid #f0dded",
+        borderRadius: 999, padding: "4px 14px",
+        fontSize: 12, fontWeight: 800, cursor: "pointer",
+        whiteSpace: "nowrap" as const, transition: "all 0.15s",
+        flexShrink: 0,
+      }
 }
 
-export default function Filters({ selectedRarity, setSelectedRarity, selectedOrigin, setSelectedOrigin, origins }: FiltersProps) {
-  const [isMobile, setIsMobile] = useState(false)
+const labelStyle: React.CSSProperties = {
+  fontSize: 10, fontWeight: 800, textTransform: "uppercase" as const,
+  letterSpacing: "0.08em", color: "#b89ab8", flexShrink: 0,
+  minWidth: 52,
+}
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640)
-    check()
-    window.addEventListener("resize", check)
-    return () => window.removeEventListener("resize", check)
-  }, [])
+export default function Filters({
+  selectedRarity, setSelectedRarity,
+  selectedOrigin, setSelectedOrigin,
+  origins,
+}: FiltersProps) {
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: 11, fontWeight: 800, textTransform: "uppercase",
-    letterSpacing: "0.08em", color: "#b89ab8", flexShrink: 0,
-  }
-
-  const dropdownStyle: React.CSSProperties = {
+  const dropdownBase: React.CSSProperties = {
     background: "white",
     border: "1.5px solid #f0dded",
     borderRadius: 999,
-    padding: "5px 12px",
-    fontSize: 12,
-    fontWeight: 700,
-    color: selectedOrigin !== "ALL" ? "#7040b0" : "#9a7ab0",
-    cursor: "pointer",
-    outline: "none",
-    flex: 1,
-    maxWidth: 240,
+    padding: "5px 32px 5px 12px",
+    fontSize: 12, fontWeight: 700,
+    cursor: "pointer", outline: "none",
     appearance: "none" as const,
     WebkitAppearance: "none" as const,
     backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a7ab0' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
     backgroundRepeat: "no-repeat",
-    backgroundPosition: "right 12px center",
-    paddingRight: 32,
-    ...(selectedOrigin !== "ALL" ? {
-      borderColor: "#9B4FD4",
-      background: "#F5F0FF",
-      boxShadow: "0 2px 8px #9B4FD433",
-    } : {}),
+    backgroundPosition: "right 10px center",
   }
 
-  const rarityDropdownStyle: React.CSSProperties = {
-    background: "white",
-    border: "1.5px solid #f0dded",
-    borderRadius: 999,
-    padding: "5px 12px",
-    fontSize: 12,
-    fontWeight: 700,
-    color: selectedRarity !== "ALL" ? "#d4608a" : "#9a7ab0",
-    cursor: "pointer",
-    outline: "none",
-    flex: 1,
-    maxWidth: 160,
-    appearance: "none" as const,
-    WebkitAppearance: "none" as const,
-    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239a7ab0' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-    backgroundRepeat: "no-repeat",
-    backgroundPosition: "right 12px center",
-    paddingRight: 32,
-    ...(selectedRarity !== "ALL" ? {
-      borderColor: "#d4608a",
-      background: "#FFF0F5",
-      boxShadow: "0 2px 8px #d4608a33",
-    } : {}),
-  }
+  const rarityActive = selectedRarity !== "ALL"
+  const originActive = selectedOrigin !== "ALL"
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
 
-      {/* ── RARIDADE ── */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6 }}>
-        <span style={labelStyle}>Raridade:</span>
-
-        {isMobile ? (
-          /* Dropdown em mobile */
-          <select
-            value={selectedRarity}
-            onChange={(e) => setSelectedRarity(e.target.value)}
-            style={rarityDropdownStyle}
-          >
-            {rarities.map((r) => (
-              <option key={r.value} value={r.value}>{r.label}</option>
-            ))}
-          </select>
-        ) : (
-          /* Botões em desktop */
-          rarities.map((r) => {
+      {/* ── Linha única: RARIDADE label + pills scrolláveis ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={labelStyle}>Raridade</span>
+        <div style={{
+          display: "flex", gap: 6, overflowX: "auto",
+          WebkitOverflowScrolling: "touch" as any,
+          scrollbarWidth: "none" as any,
+          flex: 1,
+          paddingBottom: 2,
+        }}>
+          {rarities.map((r) => {
             const active = selectedRarity === r.value
             const cfg = r.value !== "ALL" ? rarityConfig[r.value as keyof typeof rarityConfig] : null
             return (
@@ -137,34 +109,31 @@ export default function Filters({ selectedRarity, setSelectedRarity, selectedOri
                 {r.label}
               </button>
             )
-          })
-        )}
+          })}
+        </div>
       </div>
 
-      {/* ── ORIGEM — Todas como pill + dropdown para o resto ── */}
+      {/* ── Linha única: ORIGEM label + "Todas" pill + dropdown ── */}
       {origins.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={labelStyle}>Origem:</span>
-
-          {/* Pill "Todas" */}
-          <button
-            onClick={() => setSelectedOrigin("ALL")}
-            style={pillStyle(selectedOrigin === "ALL", "#d4608a", "#FFF0F5")}
-          >
-            Todas
-          </button>
-
-          {/* Dropdown para origens específicas */}
-          <div style={{ position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={labelStyle}>Origem</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+            <button
+              onClick={() => setSelectedOrigin("ALL")}
+              style={pillStyle(!originActive, "#d4608a", "#FFF0F5")}
+            >
+              Todas
+            </button>
             <select
-              value={selectedOrigin === "ALL" ? "" : selectedOrigin}
+              value={originActive ? selectedOrigin : ""}
               onChange={(e) => setSelectedOrigin(e.target.value || "ALL")}
               style={{
-                ...dropdownStyle,
-                flex: "none",
-                maxWidth: 220,
-                color: selectedOrigin !== "ALL" ? "#7040b0" : "#9a7ab0",
-                ...(selectedOrigin !== "ALL" ? {
+                ...dropdownBase,
+                color: originActive ? "#7040b0" : "#9a7ab0",
+                flex: 1,
+                minWidth: 0,
+                maxWidth: 200,
+                ...(originActive ? {
                   borderColor: "#9B4FD4",
                   background: "#F5F0FF",
                   boxShadow: "0 2px 8px #9B4FD433",
@@ -179,6 +148,8 @@ export default function Filters({ selectedRarity, setSelectedRarity, selectedOri
           </div>
         </div>
       )}
+
+      <style>{`.filters-scroll::-webkit-scrollbar { display: none; }`}</style>
     </div>
   )
 }

@@ -9,6 +9,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { tipo, florista_id, flores_ids, florista_nome, flores_nomes } = body
 
+    console.log("[Solicitações] Recebido:", { tipo, florista_id, flores_ids, florista_nome })
+    console.log("[Solicitações] DB:", SOLICITACOES_DB)
+
+    if (!SOLICITACOES_DB) {
+      return NextResponse.json({ error: "NOTION_SOLICITACOES_DB não configurado no .env.local" }, { status: 500 })
+    }
+
     if (!tipo || !florista_id) {
       return NextResponse.json(
         { error: "Campos obrigatórios: tipo, florista_id" },
