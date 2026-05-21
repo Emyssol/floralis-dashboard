@@ -2,15 +2,57 @@ import { NextResponse } from "next/server"
 import { notion } from "@/app/lib/notion"
 
 export async function GET() {
-  const [solRes, floresRes, floristasRes] = await Promise.all([
-    notion.databases.retrieve({ database_id: "365210e1771880af853bddc14546140e" }),
-    notion.databases.retrieve({ database_id: "9af7938f441e47a1a188b878c56a6788" }),
-    notion.databases.retrieve({ database_id: "a6d317af75694d56bfd155ad562b5797" }),
-  ])
+  const results: any[] = []
+  let cursor: string | undefined
+  do {
+    const res: any = await notion.databases.query({
+      database_id: process.env.NOTION_FLOWERS_DB!,
+      page_size: 100,
+      start_cursor: cursor,
+    })
+    results.push(...res.results)
+    cursor = res.has_more ? res.next_cursor : undefined
+  } while (cursor)
+
+  const buscar = [
+    "flamingo", "white flamingo",
+    "yellow dancing", "dancing lady",
+    "yellow himalayan", "himalayan",
+    "graça", "dragao", "dragon",
+    "hora preguiçosa", "lazy",
+    "primula rosa", "primula roxa", "baby primrose",
+    "desejo estelar", "stellar",
+    "flor da erupção", "sunflare",
+    "petala iluminada", "sunlit",
+    "zangao amarela", "bumble rose",
+    "yellow green boat", "boat orchid",
+    "bencao do leao", "golden lion",
+    "fortuna do leao", "pink lion",
+    "hora do cha", "easter teatime",
+    "balanco das ondas", "wavelet",
+    "hibisco esfumacado", "smokepink",
+    "abyssal", "sonho", "onírico",
+    "pequena primula"
+  ]
+
+  const todas = results.map((p: any) =>
+    p.properties["🌸 Nome da Flor"]?.title?.[0]?.plain_text ?? ""
+  ).filter(Boolean).sort()
+
+  const encontradas = todas.filter((nome: string) => {
+    const lower = nome.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    return buscar.some(b => {
+      const bNorm = b.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      return lower.includes(bNorm)
+    })
+  })
 
   return NextResponse.json({
-    solicitacoes: Object.entries((solRes as any).properties).map(([k, v]: any) => ({ key: k, type: v.type })),
-    flores:       Object.entries((floresRes as any).properties).map(([k, v]: any) => ({ key: k, type: v.type })),
-    floristas:    Object.entries((floristasRes as any).properties).map(([k, v]: any) => ({ key: k, type: v.type })),
+    total: encontradas.length,
+    flores: encontradas,
+    // Também retorna todas para conferir
+    todas_as_flores: todas,
   })
 }
