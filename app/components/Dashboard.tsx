@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 
-import Header from "@/app/components/Header"
 import StatsGrid from "@/app/components/StatsGrid"
 import SearchBar from "@/app/components/SearchBar"
 import Filters from "@/app/components/Filters"
@@ -16,6 +15,7 @@ import FloristasView from "@/app/components/FloristasView"
 import MissoesView from "@/app/components/MissoesView"
 import SpotlightSearch from "@/app/components/SpotlightSearch"
 import WeeklySummary from "@/app/components/WeeklySummary"
+import HeroHeader from "@/app/components/HeroHeader"
 import FloristasShowcase from "@/app/components/FloristasShowcase"
 import CompetitionCarousel from "@/app/components/CompetitionCarousel"
 import RareView from "@/app/components/RareView"
@@ -212,7 +212,7 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
   return (
     <>
       <div style={{ background: "transparent", minHeight: "100vh" }}>
-        <Header />
+        <HeroHeader />
 
         <div className="main-container">
 
@@ -228,7 +228,7 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
           />
 
           {/* Divisor */}
-          <Divider src="/ornaments/divisor-folhas.png" />
+          <Divider src="/ornaments/divisor-folhas.png" opacity={0.55} />
 
           {/* KPIs da semana */}
           <div style={{ marginBottom: 24 }}>

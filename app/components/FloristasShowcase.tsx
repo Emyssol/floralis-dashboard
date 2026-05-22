@@ -72,19 +72,20 @@ export default function FloristasShowcase({ members, onViewAll, onSelectMember }
   const seed = new Date().toDateString()
 
   const { birthdays, all } = useMemo(() => {
+    const seed = new Date().toDateString()
     const birthdays = members.filter((m) => isBirthdayToday(m.birthday))
     const scored = members.map((m) => ({
       m, s: isBirthdayToday(m.birthday) ? -2 : isBirthdaySoon(m.birthday) ? -1 : hashStr(m.id+seed),
     }))
     scored.sort((a,b) => a.s - b.s)
     return { birthdays, all: scored.map(x => x.m) }
-  }, [members, seed])
+  }, [members])
 
   const shown = expanded ? all : all.slice(0, SHOW)
 
   return (
     <div>
-      <Divider src="/ornaments/divisor-dourado.png" opacity={0.25} margin="0 0 0" />
+      <Divider src="/ornaments/divisor-dourado.png" opacity={0.55} margin="0 0 0" />
 
       {/* Aniversariante do dia */}
       <AnimatePresence>

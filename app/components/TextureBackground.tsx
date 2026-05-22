@@ -1,12 +1,16 @@
-/**
- * TextureBackground
- *
- * A textura tem fundo rosa claro não-transparente.
- * mix-blend-mode: multiply faz o fundo branco da textura desaparecer
- * e só as flores rosa ficam visíveis sobre o dashboard.
- * opacity: 0.35 controla a intensidade — ajuste conforme gosto.
- */
+"use client"
+
+import { useEffect, useState } from "react"
+
 export default function TextureBackground() {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted) return null
+
   return (
     <div
       aria-hidden
@@ -17,7 +21,7 @@ export default function TextureBackground() {
         backgroundSize: "520px auto",
         backgroundRepeat: "repeat",
         mixBlendMode: "multiply",
-        opacity: 0.65,
+        opacity: 0.55,
         pointerEvents: "none",
         zIndex: 0,
       }}

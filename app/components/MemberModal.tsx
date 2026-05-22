@@ -1,6 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
+import ModalPortal from "@/app/components/ModalPortal"
 import { useEffect, useState } from "react"
 import { rarityConfig } from "@/app/lib/rarity"
 import type { Flower, Member } from "@/app/lib/types"
@@ -86,8 +87,9 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
   }, [])
 
   return (
+    <ModalPortal>
     <motion.div
-      style={{ position:"fixed",inset:0,background:"rgba(40,20,45,0.42)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",zIndex:50,display:"flex",alignItems:"flex-end",justifyContent:"center" }}
+      style={{ position:"fixed",inset:0,background:"rgba(40,20,45,0.42)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",zIndex:50,isolation:"isolate",display:"flex",alignItems:"flex-end",justifyContent:"center" }}
       initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }}
       transition={{ duration:0.18 }}
       onClick={(e) => e.target===e.currentTarget && onClose()}
@@ -97,6 +99,7 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
           position:"relative", width:"100%", maxWidth:480,
           background:"rgba(255,248,251,0.97)",
           borderRadius:"24px 24px 0 0",
+          isolation: "isolate",
           overflow:"hidden", maxHeight:"92vh",
           boxShadow:"0 -4px 32px rgba(80,30,60,0.14), 0 -1px 8px rgba(80,30,60,0.06)",
         }}
@@ -183,15 +186,18 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                     style={{ background:"linear-gradient(160deg,rgba(255,255,255,0.90) 0%,rgba(205,183,238,0.08) 100%)",border:"1px solid rgba(205,183,238,0.28)",borderRadius:16,padding:"12px 14px",minHeight:48 }}>
                     {member.favorites.length>0 ? (
                       <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-                        {member.favorites.map((name,i) => {
-                          const fd=flowers.find(f=>f.name===name)
-                          const isUR=fd?.rarity==="❤️ UR"; const isSSR=fd?.rarity==="💛 SSR"
-                          const t = isUR||isSSR
-                            ? { background:"rgba(246,230,188,0.30)",color:"#B07010",border:"1px solid rgba(246,230,188,0.55)" }
-                            : i%3===2
-                            ? { background:"rgba(205,183,238,0.20)",color:"#7040B0",border:"1px solid rgba(205,183,238,0.40)" }
+                        {member.favorites.map((name) => {
+                          const fd = flowers.find(f=>f.name===name)
+                          const cfg = fd ? rarityConfig[fd.rarity as keyof typeof rarityConfig] : null
+                          const t = cfg
+                            ? { background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}33` }
                             : { background:"rgba(232,184,203,0.20)",color:"#C8849E",border:"1px solid rgba(232,184,203,0.40)" }
-                          return <span key={name} style={{ ...t,borderRadius:999,padding:"4px 10px",fontSize:11,fontWeight:700 }}>{name}</span>
+                          return (
+                            <span key={name} style={{ ...t,borderRadius:999,padding:"4px 10px",fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center",gap:4 }}>
+                              {fd && <span style={{ fontSize:9,opacity:0.8 }}>{fd.rarity.split(" ")[0]}</span>}
+                              {name}
+                            </span>
+                          )
                         })}
                       </div>
                     ) : (
@@ -274,5 +280,6 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
         </div>
       </motion.div>
     </motion.div>
+    </ModalPortal>
   )
 }

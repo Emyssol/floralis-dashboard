@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+import ModalPortal from "@/app/components/ModalPortal"
 import { useEffect } from "react"
 import type { Member } from "@/app/lib/types"
 
@@ -59,6 +60,7 @@ export default function FloristProfileModal({ member, onClose }: Props) {
   }, [onClose])
 
   return (
+    <ModalPortal>
     <motion.div
       style={{
         position: "fixed", inset: 0,
@@ -66,6 +68,7 @@ export default function FloristProfileModal({ member, onClose }: Props) {
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
         zIndex: 50,
+        isolation: "isolate",
         display: "flex", alignItems: "flex-end", justifyContent: "center",
       }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -77,6 +80,7 @@ export default function FloristProfileModal({ member, onClose }: Props) {
           width: "100%", maxWidth: 480,
           background: "rgba(255,248,251,0.98)",
           borderRadius: "28px 28px 0 0",
+          isolation: "isolate",
           overflow: "hidden",
           maxHeight: "90dvh",
           boxShadow: "0 -4px 32px rgba(80,30,60,0.14)",
@@ -187,5 +191,6 @@ export default function FloristProfileModal({ member, onClose }: Props) {
         </div>
       </motion.div>
     </motion.div>
+    </ModalPortal>
   )
 }
