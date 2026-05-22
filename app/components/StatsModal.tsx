@@ -66,6 +66,7 @@ export default function StatsModal({ type, flowers, members, onClose }: Props) {
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
         zIndex: 50,
+        isolation: "isolate",
         display: "flex", alignItems: "flex-end", justifyContent: "center",
       }}
       initial={{ opacity: 0 }}

@@ -1,6 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
+import ModalPortal from "@/app/components/ModalPortal"
 import { useState, useEffect } from "react"
 import { rarityConfig } from "@/app/lib/rarity"
 import type { Flower, Member } from "@/app/lib/types"
@@ -185,6 +186,7 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
         maxHeight: isMobile ? "92vh" : "90vh",
         display: "flex", flexDirection: "column",
         overflow: "hidden",
+        isolation: "isolate",
         boxShadow: isMobile
           ? "0 -8px 40px rgba(40,0,40,0.2)"
           : "0 24px 64px rgba(40,0,40,0.2), 0 0 0 1px rgba(255,255,255,0.6)",
@@ -407,6 +409,7 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
   )
 
   return (
+    <ModalPortal>
     <motion.div
       style={{
         position: "fixed", inset: 0,
@@ -414,6 +417,7 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
         backdropFilter: "blur(10px)",
         WebkitBackdropFilter: "blur(10px)",
         zIndex: 50,
+        isolation: "isolate",   // ← bloqueia mix-blend-mode da textura de fundo
         display: "flex",
         alignItems: isMobile ? "flex-end" : "center",
         justifyContent: "center",
@@ -425,5 +429,6 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
     >
       {inner}
     </motion.div>
+    </ModalPortal>
   )
 }

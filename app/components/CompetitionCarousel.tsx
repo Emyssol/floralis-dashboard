@@ -23,7 +23,7 @@ export default function CompetitionCarousel({ flowers, members, onSelect }: Prop
 
   return (
     <div>
-      <Divider src="/ornaments/divisor-folhas.png" opacity={0.22} margin="0 0 0" />
+      <Divider src="/ornaments/divisor-folhas.png" opacity={0.55} margin="0 0 0" />
 
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
         <p className="section-title">

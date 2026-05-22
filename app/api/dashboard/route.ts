@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { notion } from "@/app/lib/notion"
 
+const PROP_FLORES_QUE_TEM    = "py%3DC"  // 🌸 Flores que tem
+const PROP_FLORES_COMPETICAO = "J%5EvN"  // 🎖️ Flores para Competição
+
+// ── Paginar database ──
 async function queryAll(databaseId: string): Promise<any[]> {
   const results: any[] = []
   let cursor: string | undefined
@@ -8,6 +12,7 @@ async function queryAll(databaseId: string): Promise<any[]> {
     const response = await notion.databases.query({
       database_id: databaseId,
       start_cursor: cursor,
+      page_size: 100,
     })
     results.push(...response.results)
     cursor = response.next_cursor ?? undefined
@@ -15,9 +20,7 @@ async function queryAll(databaseId: string): Promise<any[]> {
   return results
 }
 
-const PROP_FLORES_QUE_TEM    = "py%3DC"  // 🌸 Flores que tem
-const PROP_FLORES_COMPETICAO = "J%5EvN"  // 🎖️ Flores para Competição
-
+// ── Buscar relação paginada ──
 async function getFullRelation(pageId: string, propertyId: string): Promise<string[]> {
   const ids: string[] = []
   let cursor: string | undefined
@@ -44,8 +47,24 @@ async function resolveRelation(member: any, propName: string, propId: string): P
   return prop.relation?.map((r: any) => r.id) || []
 }
 
+// ── Processar em lotes para não sobrecarregar o Notion ──
+async function processInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = []
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize)
+    const batchResults = await Promise.all(batch.map(fn))
+    results.push(...batchResults)
+  }
+  return results
+}
+
 export async function GET() {
   try {
+    // Busca flowers e members em paralelo
     const [flowersRes, membersRes] = await Promise.allSettled([
       queryAll(process.env.NOTION_FLOWERS_DB!),
       queryAll(process.env.NOTION_MEMBERS_DB!),
@@ -59,10 +78,10 @@ export async function GET() {
 
     const flowers = flowersRes.value.map((page: any) => {
       const f = {
-        id:     page.id,
-        name:   page.properties["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa",
-        rarity: page.properties["💗 Raridade"]?.select?.name || "💚 N",
-        origin: page.properties["🛒 Origem"]?.select?.name || "Desconhecida",
+        id:       page.id,
+        name:     page.properties["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa",
+        rarity:   page.properties["💗 Raridade"]?.select?.name || "💚 N",
+        origin:   page.properties["🛒 Origem"]?.select?.name || "Desconhecida",
         points:   page.properties["⭐ Pontuação Base"]?.number || 0,
         diamonds: page.properties["💎 Diamantes para Dobrar"]?.number || 0,
         owners:   page.properties["👑 Quem tem"]?.relation?.length || 0,
@@ -80,8 +99,12 @@ export async function GET() {
     const stripEmoji = (str: string) =>
       str.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "").trim() || str
 
-    const members = await Promise.all(
-      membersRes.value.map(async (member: any) => {
+    // Processar membros em lotes de 5 para evitar rate limit
+    // Membros sem has_more não fazem chamadas extras — só os que têm >25 flores
+    const members = await processInBatches(
+      membersRes.value,
+      5, // 5 membros por vez = max 10 chamadas simultâneas ao Notion
+      async (member: any) => {
         const [flowerIds, favoriteIds] = await Promise.all([
           resolveRelation(member, "🌸 Flores que tem",          PROP_FLORES_QUE_TEM),
           resolveRelation(member, "🎖️ Flores para Competição", PROP_FLORES_COMPETICAO),
@@ -94,17 +117,16 @@ export async function GET() {
 
         const cargoRaw = member.properties["🏷️ Cargo"]?.select?.name || "Membro"
 
-        // 🎂 Data de aniversário — campo "🎂 Aniversário" (type: date)
         const birthdayRaw: string | null =
           member.properties["🎂 Aniversário"]?.date?.start ?? null
 
         return {
-          id:          member.id,
-          name:        member.properties["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista",
-          cargo:       stripEmoji(cargoRaw),
-          status:      stripEmoji(statusRaw),
-          lastEdited:  member.last_edited_time as string,
-          birthday:    birthdayRaw,   // "YYYY-MM-DD" ou null
+          id:         member.id,
+          name:       member.properties["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista",
+          cargo:      stripEmoji(cargoRaw),
+          status:     stripEmoji(statusRaw),
+          lastEdited: member.last_edited_time as string,
+          birthday:   birthdayRaw,
           avatar:
             member.properties["🖼️ Avatar"]?.files?.[0]?.file?.url ||
             member.properties["🖼️ Avatar"]?.files?.[0]?.external?.url ||
@@ -113,7 +135,7 @@ export async function GET() {
           flowers:   flowerIds.map((id) => flowerById[id]).filter(Boolean),
           favorites: favoriteIds.map((id) => flowerById[id]).filter(Boolean),
         }
-      })
+      }
     )
 
     return NextResponse.json({ flowers, members })
