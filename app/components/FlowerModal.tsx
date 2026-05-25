@@ -117,7 +117,7 @@ function ReportButton({ flower, members }: { flower: Flower; members: Member[] }
                 }}
               >
                 <option value="">Escolha sua florista...</option>
-                {members.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                {[...members].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
               {error && <p style={{ fontSize: 11, color: "#c0304a", margin: "8px 0 0" }}>{error}</p>}
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -149,11 +149,11 @@ function ReportButton({ flower, members }: { flower: Flower; members: Member[] }
 }
 
 export default function FlowerModal({ flower, members, onClose }: Props) {
-  const [tab, setTab]     = useState<ModalTab>("info")
+  const [tab, setTab]           = useState<ModalTab>("info")
   const [isMobile, setIsMobile] = useState(false)
-  const rarity    = rarityConfig[flower.rarity as keyof typeof rarityConfig]
-  const owners    = members.filter((m) => m.flowers.includes(flower.name))
-  const favorites = members.filter((m) => m.favorites.includes(flower.name))
+  const rarity     = rarityConfig[flower.rarity as keyof typeof rarityConfig]
+  const owners     = members.filter((m) => m.flowers.includes(flower.name))
+  const favorites  = members.filter((m) => m.favorites.includes(flower.name))
   const ownerLabel = ownershipLabel(flower.owners)
   const rarityIndex = rarityOrder.indexOf(flower.rarity)
   const rarityStars = Math.max(1, 5 - rarityIndex)
@@ -192,7 +192,7 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
           : "0 24px 64px rgba(40,0,40,0.2), 0 0 0 1px rgba(255,255,255,0.6)",
       }}
       initial={isMobile ? { y: "100%" } : { opacity: 0, scale: 0.93, y: 20 }}
-      animate={isMobile ? { y: 0 }     : { opacity: 1, scale: 1, y: 0 }}
+      animate={isMobile ? { y: 0 }     : { opacity: 1, scale: 1,    y: 0  }}
       exit={isMobile    ? { y: "100%" } : { opacity: 0, scale: 0.93, y: 20 }}
       transition={{ type: "spring", stiffness: 340, damping: 34 }}
     >
@@ -264,12 +264,12 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
 
           {tab === "info" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* Stats — 3 cards + card diamantes */}
+              {/* Stats — 3 cards */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                 {[
-                  { icon: "⭐", value: flower.points, label: "Pontos", color: "#D97706", bg: "#FFFBEB" },
-                  { icon: "👥", value: flower.owners, label: "Donos",  color: "#C8849E", bg: "#FFF5F8" },
-                  { icon: "🌙", value: flower.origin, label: "Origem", color: "#9B7FCC", bg: "#F8F5FF" },
+                  { icon: "⭐", value: flower.points, label: "Pontos",   color: "#D97706", bg: "#FFFBEB" },
+                  { icon: "👥", value: flower.owners, label: "Quem tem", color: "#C8849E", bg: "#FFF5F8" },
+                  { icon: "🌙", value: flower.origin, label: "Origem",   color: "#9B7FCC", bg: "#F8F5FF" },
                 ].map((s) => (
                   <div key={s.label} style={{ background: s.bg, borderRadius: 14, padding: "12px 8px", textAlign: "center" }}>
                     <div style={{ fontSize: 16, marginBottom: 3 }}>{s.icon}</div>
@@ -279,30 +279,28 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
                 ))}
               </div>
 
-              {/* Card de diamantes — points × 3 */}
+              {/* Card de diamantes — compacto, sem palavra "diamantes" */}
               <div style={{
                 background: "linear-gradient(135deg, #f0f0ff 0%, #e8e0ff 100%)",
                 border: "1px solid rgba(155,127,204,0.30)",
-                borderRadius: 14, padding: "12px 16px",
-                display: "flex", alignItems: "center", gap: 12,
+                borderRadius: 12, padding: "8px 12px",
+                display: "flex", alignItems: "center", gap: 10,
               }}>
                 <div style={{
-                  width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                  width: 32, height: 32, borderRadius: 10, flexShrink: 0,
                   background: "rgba(155,127,204,0.15)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 20,
+                  fontSize: 16,
                 }}>💎</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#9B7FCC", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Diamantes para dobrar nas missões
+                  <p style={{ fontSize: 10, fontWeight: 700, color: "#9B7FCC", margin: "0 0 1px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Dobra nas missões
                   </p>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-                    <span style={{ fontSize: 22, fontWeight: 900, color: "#7040A8", lineHeight: 1 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: "#7040A8", lineHeight: 1 }}>
                       {flower.diamonds || flower.points * 3}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "#9B7FCC" }}>
-                      💎 diamantes
-                    </span>
+                    <span style={{ fontSize: 13 }}>💎</span>
                   </div>
                 </div>
               </div>
@@ -410,25 +408,25 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
 
   return (
     <ModalPortal>
-    <motion.div
-      style={{
-        position: "fixed", inset: 0,
-        background: "rgba(40,10,40,0.45)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        zIndex: 50,
-        isolation: "isolate",   // ← bloqueia mix-blend-mode da textura de fundo
-        display: "flex",
-        alignItems: isMobile ? "flex-end" : "center",
-        justifyContent: "center",
-        padding: isMobile ? 0 : 20,
-      }}
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      {inner}
-    </motion.div>
+      <motion.div
+        style={{
+          position: "fixed", inset: 0,
+          background: "rgba(40,10,40,0.45)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          zIndex: 50,
+          isolation: "isolate",
+          display: "flex",
+          alignItems: isMobile ? "flex-end" : "center",
+          justifyContent: "center",
+          padding: isMobile ? 0 : 20,
+        }}
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        onClick={(e) => e.target === e.currentTarget && onClose()}
+      >
+        {inner}
+      </motion.div>
     </ModalPortal>
   )
 }

@@ -24,7 +24,7 @@ const titles: Record<NonNullable<StatModalType>, { icon: string; label: string; 
   unicas:    { icon: "✨", label: "Flores Exclusivas (1 dono)", color: "#6040a0" },
   colecao:   { icon: "🎯", label: "Progresso da Coleção",       color: "#1a8a3a" },
   sem_dono:  { icon: "🌿", label: "Flores que Ninguém Tem",     color: "#059669" },
-  missoes:   { icon: "🎯", label: "Em Missão",                  color: "#15803d" },
+  missoes:   { icon: "🏆", label: "Flores na Competição",         color: "#d4608a" },
 }
 
 function FlowerTag({ f, cfg }: { f: Flower; cfg: { bg: string; color: string } | undefined }) {
@@ -66,7 +66,6 @@ export default function StatsModal({ type, flowers, members, onClose }: Props) {
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
         zIndex: 50,
-        isolation: "isolate",
         display: "flex", alignItems: "flex-end", justifyContent: "center",
       }}
       initial={{ opacity: 0 }}

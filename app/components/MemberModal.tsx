@@ -215,7 +215,7 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                       <div style={{ background:"rgba(255,255,255,0.80)",border:"1px solid rgba(200,160,190,0.20)",borderRadius:16,padding:14 }}>
                         <p style={{ fontSize:12,fontWeight:700,color:"#4D3750",margin:"0 0 10px" }}>Toque nas flores para selecionar as preferidas desta semana:</p>
                         {rarityOrder.map((r) => {
-                          const group=ownedFlowers.filter(f=>f.rarity===r); if(!group.length) return null
+                          const group=ownedFlowers.filter(f=>f.rarity===r).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR")); if(!group.length) return null
                           const cfg=rarityConfig[r as keyof typeof rarityConfig]
                           return (
                             <div key={r} style={{ marginBottom:10 }}>
@@ -255,7 +255,7 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
 
             {/* Flores por raridade */}
             {rarityOrder.map((r) => {
-              const group=ownedFlowers.filter(f=>f.rarity===r); if(!group.length) return null
+              const group=ownedFlowers.filter(f=>f.rarity===r).sort((a,b)=>a.name.localeCompare(b.name,"pt-BR")); if(!group.length) return null
               const cfg=rarityConfig[r as keyof typeof rarityConfig]
               return (
                 <div key={r}>

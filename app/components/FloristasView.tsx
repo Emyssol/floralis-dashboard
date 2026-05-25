@@ -33,7 +33,7 @@ export default function FloristasView({ flowers, members, onSelectMember }: Prop
       urCount:  flowers.filter((f) => m.flowers.includes(f.name) && f.rarity === "❤️ UR").length,
       prefCount: m.favorites.length,
     }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => a.member.name.localeCompare(b.member.name, "pt-BR"))
 
   const topCount = ranked[0]?.count ?? 1
 

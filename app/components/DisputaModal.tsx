@@ -1,30 +1,27 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState } from "react"
+import { motion } from "framer-motion"
 import { rarityConfig } from "@/app/lib/rarity"
 import type { Flower, Member } from "@/app/lib/types"
 
-interface TabsProps {
-  activeTab: string
-  setActiveTab: (value: string) => void
-  // Props extras para a aba Missões (flores em disputa)
-  flowers?: Flower[]
-  members?: Member[]
-  onSelectFlower?: (f: Flower) => void
-}
-
-// ── Modal de ranking flores em disputa ──
-function DisputaModal({
-  flowers, members, flowerCompetitionCount, onClose, onSelectFlower,
-}: {
+interface Props {
   flowers: Flower[]
   members: Member[]
-  flowerCompetitionCount: Record<string, number>
   onClose: () => void
   onSelectFlower: (f: Flower) => void
-}) {
+}
+
+export default function DisputaModal({ flowers, members, onClose, onSelectFlower }: Props) {
   const [search, setSearch] = useState("")
+
+  const flowerCompetitionCount: Record<string, number> = {}
+  members.filter((m) => m.status === "Em Missão").forEach((m) => {
+    m.favorites.forEach((name) => {
+      flowerCompetitionCount[name] = (flowerCompetitionCount[name] ?? 0) + 1
+    })
+  })
+
   const allRanked = Object.entries(flowerCompetitionCount).sort((a, b) => b[1] - a[1])
   const ranked = search.trim()
     ? allRanked.filter(([name]) => name.toLowerCase().includes(search.toLowerCase()))
@@ -63,6 +60,7 @@ function DisputaModal({
           </div>
           <button onClick={onClose} style={{ width: 30, height: 30, borderRadius: "50%", background: "#f5eef8", color: "#b090c0", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700 }}>✕</button>
         </div>
+
         <div style={{ overflowY: "auto", maxHeight: "calc(88vh - 90px)", padding: "14px 16px 32px" }}>
           {/* Barra de busca */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f8f4fb", border: "1.5px solid #eddde8", borderRadius: 12, padding: "8px 12px", marginBottom: 12 }}>
@@ -76,17 +74,18 @@ function DisputaModal({
             />
             {search && <button onClick={() => setSearch("")} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, color: "#b89ab8" }}>✕</button>}
           </div>
+
           {ranked.length === 0 ? (
             <div style={{ padding: "40px 0", textAlign: "center" }}>
               <p style={{ fontSize: 36 }}>🌿</p>
-              <p style={{ marginTop: 10, fontSize: 13, color: "#c4a8c4" }}>Nenhuma flor em disputa</p>
+              <p style={{ marginTop: 10, fontSize: 13, color: "#c4a8c4" }}>Nenhuma flor na competição</p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {ranked.map(([name, count], i) => {
                 const flower = flowers.find((f) => f.name === name)
                 const cfg = flower ? rarityConfig[flower.rarity as keyof typeof rarityConfig] : null
-                const users = members.filter((m) => m.status === "Em Missão" && m.favorites.includes(name))
+                const users = members.filter((m) => m.status === "Em Missão" && m.favorites.includes(name)).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
                 const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null
                 return (
                   <motion.div
@@ -138,132 +137,5 @@ function DisputaModal({
         </div>
       </motion.div>
     </motion.div>
-  )
-}
-
-// ── Aba de Missões — pills de stats + botão flores em disputa ──
-function MissoesTabBar({ flowers = [], members = [], onSelectFlower }: {
-  flowers: Flower[]
-  members: Member[]
-  onSelectFlower?: (f: Flower) => void
-}) {
-  const [showDisputa, setShowDisputa] = useState(false)
-
-  const flowerCompetitionCount = useMemo(() => {
-    const count: Record<string, number> = {}
-    members.filter((m) => m.status === "Em Missão").forEach((m) => {
-      m.favorites.forEach((name) => { count[name] = (count[name] ?? 0) + 1 })
-    })
-    return count
-  }, [members])
-
-  const emMissaoCount  = members.filter((m) => m.status === "Em Missão").length
-  const concluidoCount = members.filter((m) => m.status === "Concluiu").length
-  const disputaCount   = Object.keys(flowerCompetitionCount).length
-
-  return (
-    <>
-      <div style={{
-        display: "flex", gap: 8,
-        overflowX: "auto", WebkitOverflowScrolling: "touch" as any,
-        scrollbarWidth: "none" as any, paddingBottom: 2,
-      }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#DCFCE7", border: "1.5px solid #86efac", borderRadius: 999, padding: "7px 14px", flexShrink: 0 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-          <span style={{ fontSize: 15, fontWeight: 900, color: "#15803D" }}>{emMissaoCount}</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#15803D" }}>Em Missão</span>
-        </div>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#EFF6FF", border: "1.5px solid #bfdbfe", borderRadius: 999, padding: "7px 14px", flexShrink: 0 }}>
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#60a5fa", display: "inline-block" }} />
-          <span style={{ fontSize: 15, fontWeight: 900, color: "#2060C0" }}>{concluidoCount}</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#2060C0" }}>Concluíram</span>
-        </div>
-        <button
-          onClick={() => setShowDisputa(true)}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#FFF0F5", border: "1.5px solid #f9c8dc", borderRadius: 999, padding: "7px 14px", flexShrink: 0, cursor: "pointer" }}
-        >
-          <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#d4608a", display: "inline-block" }} />
-          <span style={{ fontSize: 15, fontWeight: 900, color: "#d4608a" }}>{disputaCount}</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#d4608a" }}>Flores na competição</span>
-          <span style={{ fontSize: 11, color: "#d4608a" }}>→</span>
-        </button>
-      </div>
-
-      <AnimatePresence>
-        {showDisputa && (
-          <DisputaModal
-            key="disputa"
-            flowers={flowers}
-            members={members}
-            flowerCompetitionCount={flowerCompetitionCount}
-            onClose={() => setShowDisputa(false)}
-            onSelectFlower={(f) => { onSelectFlower?.(f); setShowDisputa(false) }}
-          />
-        )}
-      </AnimatePresence>
-    </>
-  )
-}
-
-const coreTabs = [
-  { id: "missoes",   label: "🎯 Missões"   },
-  { id: "raras",     label: "💎 Mais Raras" },
-  { id: "populares", label: "🌻 Populares"  },
-]
-
-export default function Tabs({ activeTab, setActiveTab, flowers = [], members = [], onSelectFlower }: TabsProps) {
-  return (
-    <>
-      <div style={{
-        position: "sticky", top: 0, zIndex: 30,
-        background: "#FFF9F2",
-        paddingTop: 6, paddingBottom: 6,
-        marginLeft: -12, marginRight: -12,
-        paddingLeft: 12, paddingRight: 12,
-      }}>
-        {/* Pills das tabs */}
-        <div style={{
-          display: "flex", gap: 8,
-          overflowX: "auto", WebkitOverflowScrolling: "touch" as any,
-          scrollbarWidth: "none" as any,
-          marginBottom: activeTab === "missoes" ? 10 : 0,
-        }}>
-          {coreTabs.map((tab) => {
-            const active = activeTab === tab.id
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  position: "relative", borderRadius: 20,
-                  padding: "9px 18px", fontSize: 13, fontWeight: 800,
-                  whiteSpace: "nowrap", flexShrink: 0,
-                  color: active ? "white" : "#9a7ab0",
-                  background: active ? "transparent" : "white",
-                  border: active ? "none" : "1px solid #f0dded",
-                  boxShadow: active ? "none" : "0 1px 6px rgba(180,100,140,0.06)",
-                  cursor: "pointer",
-                }}
-              >
-                {active && (
-                  <motion.div
-                    layoutId="tab-pill"
-                    style={{ position: "absolute", inset: 0, borderRadius: 20, background: "linear-gradient(135deg,#d4608a,#9B4FD4)", boxShadow: "0 4px 18px rgba(212,96,138,0.3)" }}
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <span style={{ position: "relative" }}>{tab.label}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Barra de missões — só aparece quando Missões está ativo */}
-        {activeTab === "missoes" && (
-          <MissoesTabBar flowers={flowers} members={members} onSelectFlower={onSelectFlower} />
-        )}
-      </div>
-      <style>{`div::-webkit-scrollbar{display:none;}`}</style>
-    </>
   )
 }
