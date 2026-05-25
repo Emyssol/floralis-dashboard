@@ -3,8 +3,11 @@
 import { useState, useMemo } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 
+import Header from "@/app/components/Header"
+import HeroHeader from "@/app/components/HeroHeader"
 import StatsGrid from "@/app/components/StatsGrid"
 import SearchBar from "@/app/components/SearchBar"
+import GlobalSearch from "@/app/components/GlobalSearch"
 import Filters from "@/app/components/Filters"
 import FlowerCard from "@/app/components/FlowerCard"
 import FlowerModal from "@/app/components/FlowerModal"
@@ -15,7 +18,6 @@ import FloristasView from "@/app/components/FloristasView"
 import MissoesView from "@/app/components/MissoesView"
 import SpotlightSearch from "@/app/components/SpotlightSearch"
 import WeeklySummary from "@/app/components/WeeklySummary"
-import HeroHeader from "@/app/components/HeroHeader"
 import FloristasShowcase from "@/app/components/FloristasShowcase"
 import CompetitionCarousel from "@/app/components/CompetitionCarousel"
 import RareView from "@/app/components/RareView"
@@ -44,6 +46,7 @@ interface DashboardProps {
 
 export default function Dashboard({ flowers, members }: DashboardProps) {
   const [fullPage, setFullPage]             = useState<FullPage>(null)
+  const [showDisputa, setShowDisputa]       = useState(false)
   const [search, setSearch]                 = useState("")
   const [selectedRarity, setSelectedRarity] = useState("ALL")
   const [selectedOrigin, setSelectedOrigin] = useState("ALL")
@@ -216,9 +219,17 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
 
         <div className="main-container">
 
-          {/* Busca */}
+          {/* Busca global inteligente */}
           <div style={{ padding: "20px 0 16px" }}>
-            <SearchBar search={search} setSearch={setSearch} placeholder="Pesquisar flor, florista, raridade, origem..." />
+            <GlobalSearch
+              flowers={flowers}
+              members={members}
+              onSelectFlower={setSelectedFlower}
+              onSelectMember={setSelectedMember}
+              onViewAllFlowers={() => openFullPage("colecao")}
+              onViewAllMembers={() => openFullPage("floristas")}
+              onViewAllMissions={() => openFullPage("missoes")}
+            />
           </div>
 
           {/* Navegação 2×2 (mobile) / 4×1 (desktop) */}
@@ -228,7 +239,7 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
           />
 
           {/* Divisor */}
-          <Divider src="/ornaments/divisor-folhas.png" opacity={0.55} />
+          <Divider src="/ornaments/divisor-folhas.png" />
 
           {/* KPIs da semana */}
           <div style={{ marginBottom: 24 }}>
