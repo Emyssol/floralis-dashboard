@@ -1,8 +1,14 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useTransition } from "react"
 import Dashboard from "@/app/components/Dashboard"
 import type { Flower, Member } from "@/app/lib/types"
+
+interface Props {
+  initialFlowers?: Flower[]
+  initialMembers?: Member[]
+  onRevalidate?: () => Promise<void>
+}
 
 function Skeleton() {
   return (
@@ -77,11 +83,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   )
 }
 
-export default function ClientDashboard() {
-  const [flowers, setFlowers]   = useState<Flower[]>([])
-  const [members, setMembers]   = useState<Member[]>([])
-  const [loading, setLoading]   = useState(true)
+export default function ClientDashboard({ initialFlowers, initialMembers, onRevalidate }: Props) {
+  const [flowers, setFlowers]   = useState<Flower[]>(initialFlowers ?? [])
+  const [members, setMembers]   = useState<Member[]>(initialMembers ?? [])
+  const [loading, setLoading]   = useState(!initialFlowers)
   const [error, setError]       = useState("")
+  const [mounted, setMounted] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  useEffect(() => { setMounted(true); if (initialFlowers) setLastUpdated(new Date()) }, [])
 
   async function load() {
     setLoading(true)
@@ -93,6 +103,7 @@ export default function ClientDashboard() {
       if (data.error) throw new Error(data.error)
       setFlowers(data.flowers ?? [])
       setMembers(data.members ?? [])
+      setLastUpdated(new Date())
     } catch (e: any) {
       setError(e.message ?? "Erro desconhecido")
     } finally {
@@ -100,10 +111,55 @@ export default function ClientDashboard() {
     }
   }
 
-  useEffect(() => { load() }, [])
+  function handleRefresh() {
+    if (onRevalidate) {
+      startTransition(async () => {
+        await onRevalidate()
+        await load()
+      })
+    } else {
+      load()
+    }
+  }
+
+  useEffect(() => {
+    // Só busca client-side se não veio com dados do servidor
+    if (!initialFlowers) load()
+  }, [])
 
   if (loading) return <Skeleton />
   if (error)   return <ErrorState message={error} onRetry={load} />
 
-  return <Dashboard flowers={flowers} members={members} />
+  return (
+    <>
+      <Dashboard flowers={flowers} members={members} />
+      {/* Botão de atualização flutuante */}
+      <button
+        onClick={handleRefresh}
+        disabled={isPending || loading}
+        title={mounted && lastUpdated ? `Atualizado: ${lastUpdated.toLocaleTimeString("pt-BR")}` : "Atualizar dados"}
+        style={{
+          position: "fixed", bottom: 24, right: 24, zIndex: 99,
+          width: 48, height: 48, borderRadius: "50%",
+          background: isPending || loading
+            ? "rgba(200,132,158,0.5)"
+            : "linear-gradient(135deg, #d4608a, #9B4FD4)",
+          border: "none", cursor: isPending || loading ? "not-allowed" : "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "0 4px 20px rgba(200,132,158,0.35)",
+          transition: "all 0.2s",
+          animation: isPending || loading ? "spin 1s linear infinite" : "none",
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+          style={{ animation: isPending || loading ? "spin 1s linear infinite" : "none" }}>
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M8 16H3v5"/>
+        </svg>
+      </button>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+    </>
+  )
 }
