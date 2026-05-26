@@ -17,7 +17,9 @@ export default function HeroHeader() {
         width={1920}
         height={640}
         priority
+        fetchPriority="high"
         sizes="100vw"
+        quality={85}
         className="hero-img"
         style={{ width: "100%", height: "auto", display: "block" }}
       />

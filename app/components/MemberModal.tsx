@@ -186,8 +186,14 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                     style={{ background:"linear-gradient(160deg,rgba(255,255,255,0.90) 0%,rgba(205,183,238,0.08) 100%)",border:"1px solid rgba(205,183,238,0.28)",borderRadius:16,padding:"12px 14px",minHeight:48 }}>
                     {member.favorites.length>0 ? (
                       <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-                        {member.favorites.map((name) => {
-                          const fd = flowers.find(f=>f.name===name)
+                        {[...member.favorites]
+                          .map(name => ({ name, fd: flowers.find(f=>f.name===name) }))
+                          .sort((a,b) => {
+                            const ri = rarityOrder.indexOf(a.fd?.rarity ?? "") - rarityOrder.indexOf(b.fd?.rarity ?? "")
+                            if (ri !== 0) return ri
+                            return a.name.localeCompare(b.name, "pt-BR")
+                          })
+                          .map(({ name, fd }) => {
                           const cfg = fd ? rarityConfig[fd.rarity as keyof typeof rarityConfig] : null
                           const t = cfg
                             ? { background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}33` }

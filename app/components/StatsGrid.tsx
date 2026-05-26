@@ -69,7 +69,6 @@ export default function StatsGrid({ onOpenFullPage }: Props) {
             onClick={() => onOpenFullPage(c.page)}
             className="menu-card"
             style={{
-              backgroundImage: c.bg ? `url('${c.bg}')` : "none",
               backgroundColor: "rgba(255,255,255,0.86)",
               border: `1px solid ${c.border}`,
               boxShadow: `0 2px 16px ${c.shadow}`,
@@ -83,27 +82,39 @@ export default function StatsGrid({ onOpenFullPage }: Props) {
             whileHover={{ y: -3, boxShadow: `0 18px 48px rgba(220,190,210,0.10), 0 4px 12px ${c.shadow}` }}
             whileTap={{ scale: 0.98 }}
           >
-            {c.bg  && <div className="menu-card-glass" />}
-            {!c.bg && <div style={{ position:"absolute",inset:0,background:"rgba(255,255,255,0.86)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)" }} />}
-            {c.canto && <img src={c.canto} alt="" aria-hidden className="card-ornament" />}
+            {/* Background image via Next/Image for LCP optimization */}
+            {c.bg && (
+              <Image
+                src={c.bg}
+                alt=""
+                fill
+                sizes="(max-width:767px) 50vw, 25vw"
+                style={{ objectFit: "cover", zIndex: 0 }}
+                priority={i < 2}
+                loading={i < 2 ? "eager" : "lazy"}
+              />
+            )}
+            {c.bg  && <div className="menu-card-glass" style={{ zIndex: 1 }} />}
+            {!c.bg && <div style={{ position:"absolute",inset:0,background:"rgba(255,255,255,0.86)" }} />}
+            {c.canto && (
+              <img
+                src={c.canto} alt="" aria-hidden
+                className="card-ornament"
+                loading="lazy"
+                decoding="async"
+                style={{ zIndex: 1 }}
+              />
+            )}
 
-            <div style={{
-              position: "relative", zIndex: 1,
-              padding: "22px 20px 20px",
-              display: "flex", flexDirection: "column",
-              alignItems: "flex-start", flex: 1,
-            }}>
-              {/* Icon wrapper */}
+            <div style={{ position:"relative", zIndex:2, padding:"22px 20px 20px", display:"flex", flexDirection:"column", alignItems:"flex-start", flex:1 }}>
               <motion.div
                 whileHover={{ y: -2, scale: 1.03 }}
                 transition={{ duration: 0.3 }}
                 className="icon-wrapper"
                 style={{
-                  width: 96, height: 96,
-                  borderRadius: 28,
+                  width: 96, height: 96, borderRadius: 28,
                   background: "rgba(255,255,255,0.42)",
-                  backdropFilter: "blur(18px)",
-                  WebkitBackdropFilter: "blur(18px)",
+                  backdropFilter: "blur(18px)", WebkitBackdropFilter: "blur(18px)",
                   border: "1px solid rgba(255,255,255,0.55)",
                   boxShadow: "0 10px 30px rgba(220,190,220,0.08)",
                   display: "flex", alignItems: "center", justifyContent: "center",
@@ -117,6 +128,8 @@ export default function StatsGrid({ onOpenFullPage }: Props) {
                   height={72}
                   style={{ objectFit: "contain", display: "block" }}
                   className="icon-img"
+                  priority={i < 2}
+                  loading={i < 2 ? "eager" : "lazy"}
                 />
               </motion.div>
 
@@ -127,7 +140,7 @@ export default function StatsGrid({ onOpenFullPage }: Props) {
                 {c.description}
               </p>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: c.accent }}>
+              <div style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, fontWeight:700, color:c.accent }}>
                 Explorar
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
