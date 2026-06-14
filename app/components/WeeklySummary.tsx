@@ -255,13 +255,22 @@ function CompetitionModal({ flowers, members, onClose }: { flowers: Flower[]; me
 }
 
 // ── WeeklySummary principal ─────────────────────────────────────────
-const statConfig = [
-  { icon: "/icons/mission.png",  label: "Em Missão",     accent: "#C8849E", tint: "rgba(232,184,203,0.10)", border: "rgba(232,184,203,0.26)", modal: "missao"      as const },
-  { icon: "/icons/ranking.png",  label: "Em Competição", accent: "#9B7FCC", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "competicao"  as const },
-  { icon: "/icons/grafics.png",  label: "Analytics",     accent: "#7060A8", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "analytics"   as const },
-]
-
 type ModalType = "missao" | "competicao" | "analytics" | null
+
+interface StatItem {
+  icon: string
+  label: string
+  accent: string
+  tint: string
+  border: string
+  modal: ModalType
+}
+
+const statConfig: StatItem[] = [
+  { icon: "/icons/mission.png",  label: "Em Missão",     accent: "#C8849E", tint: "rgba(232,184,203,0.10)", border: "rgba(232,184,203,0.26)", modal: "missao"     },
+  { icon: "/icons/ranking.png",  label: "Em Competição", accent: "#9B7FCC", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "competicao" },
+  { icon: "/icons/grafics.png",  label: "Analytics",     accent: "#7060A8", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "analytics"  },
+]
 
 export default function WeeklySummary({ flowers, members, onOpenAnalytics }: Props) {
   const [openModal, setOpenModal] = useState<ModalType>(null)
