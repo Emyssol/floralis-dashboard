@@ -29,9 +29,11 @@ interface Props {
   members: Member[]
   onSelectFlower: (f: Flower) => void
   onSelectMember: (m: Member) => void
-  onViewAllFlowers: () => void
-  onViewAllMembers: () => void
-  onViewAllMissions: () => void
+  onViewAllFlowers?: () => void
+  onViewAllMembers?: () => void
+  onViewAllMissions?: () => void
+  placeholder?: string
+  accentColor?: string
 }
 
 interface SearchResults {
@@ -147,7 +149,7 @@ function SectionHeader({ icon, title, count, onViewAll }: { icon: string; title:
 }
 
 // ── Main GlobalSearch ────────────────────────────────────────────────
-export default function GlobalSearch({ flowers, members, onSelectFlower, onSelectMember, onViewAllFlowers, onViewAllMembers, onViewAllMissions }: Props) {
+export default function GlobalSearch({ flowers, members, onSelectFlower, onSelectMember, onViewAllFlowers, onViewAllMembers, onViewAllMissions, placeholder = "Pesquisar flor, florista, raridade, origem...", accentColor = "#C8849E" }: Props) {
   const [input, setInput]     = useState("")
   const [query, setQuery]     = useState("")
   const [focused, setFocused] = useState(false)
@@ -210,7 +212,7 @@ export default function GlobalSearch({ flowers, members, onSelectFlower, onSelec
         display: "flex", alignItems: "center", gap: 10,
         background: focused ? "rgba(255,255,255,0.96)" : "rgba(255,255,255,0.82)",
         backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)",
-        border: focused ? "1.5px solid rgba(200,132,158,0.50)" : "1px solid rgba(200,160,190,0.22)",
+        border: focused ? `1.5px solid ${accentColor}80` : "1px solid rgba(200,160,190,0.22)",
         borderRadius: showPanel ? "14px 14px 0 0" : 14,
         padding: "11px 16px",
         boxShadow: focused
@@ -218,7 +220,7 @@ export default function GlobalSearch({ flowers, members, onSelectFlower, onSelec
           : "0 2px 12px rgba(160,100,140,0.06)",
         transition: "all 0.2s ease",
       }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={focused ? "#C8849E" : "#B8A0B8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "stroke 0.2s" }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={focused ? accentColor : "#B8A0B8"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, transition: "stroke 0.2s" }}>
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
         </svg>
         <input
@@ -228,11 +230,11 @@ export default function GlobalSearch({ flowers, members, onSelectFlower, onSelec
           onChange={(e) => handleChange(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setTimeout(() => setFocused(false), 150)}
-          placeholder="Pesquisar flor, florista, raridade, origem..."
-          style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, fontWeight: 500, color: "#4D3750", caretColor: "#C8849E" }}
+          placeholder={placeholder}
+          style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 14, fontWeight: 500, color: "#4D3750", caretColor: accentColor }}
         />
         {input && (
-          <button onClick={() => { setInput(""); setQuery(""); inputRef.current?.focus() }} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", background: "rgba(200,132,158,0.12)", border: "1px solid rgba(200,132,158,0.20)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#C8849E" }}>✕</button>
+          <button onClick={() => { setInput(""); setQuery(""); inputRef.current?.focus() }} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: "50%", background: `${accentColor}1E`, border: `1px solid ${accentColor}33`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: accentColor }}>✕</button>
         )}
       </div>
 
@@ -266,52 +268,30 @@ export default function GlobalSearch({ flowers, members, onSelectFlower, onSelec
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-                {/* 🌸 Flores */}
+                {/* 📊 Resumo rápido — PRIMEIRO */}
                 {results!.flowersTotal > 0 && (
-                  <section>
-                    <SectionHeader
-                      icon="🌸" title="Flores" count={results!.flowersTotal} total={results!.flowersTotal}
-                      onViewAll={results!.flowersTotal > LIMIT_FLOWERS ? () => { setInput(""); setQuery(""); onViewAllFlowers() } : undefined}
-                    />
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {results!.flowers.map((f) => (
-                        <FlowerMini key={f.id} flower={f} members={members} onClick={() => { onSelectFlower(f); setInput(""); setQuery("") }} />
-                      ))}
+                  <section style={{ background: "rgba(200,132,158,0.05)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(200,132,158,0.12)" }}>
+                    <p style={{ fontSize: 11, fontWeight: 800, color: "#9a7ab0", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px" }}>📊 Resumo</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      <span style={{ fontSize: 12, color: "#4D3750", fontWeight: 600 }}>
+                        👑 <strong>{results!.flowers.reduce((acc, f) => acc + members.filter((m) => m.flowers.includes(f.name)).length, 0)}</strong> possuem
+                      </span>
+                      <span style={{ fontSize: 12, color: "#4D3750", fontWeight: 600 }}>
+                        🎯 <strong>{results!.inMissionTotal}</strong> disputando
+                      </span>
+                      <span style={{ fontSize: 12, color: "#4D3750", fontWeight: 600 }}>
+                        🌸 <strong>{results!.flowersTotal}</strong> flor{results!.flowersTotal !== 1 ? "es" : ""} encontrada{results!.flowersTotal !== 1 ? "s" : ""}
+                      </span>
                     </div>
-                    {results!.flowersTotal > LIMIT_FLOWERS && (
-                      <button onClick={() => { setInput(""); setQuery(""); onViewAllFlowers() }} style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#C8849E", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                        + {results!.flowersTotal - LIMIT_FLOWERS} flores → Ver todas na Coleção
-                      </button>
-                    )}
                   </section>
                 )}
 
-                {/* 🧑‍🌾 Floristas */}
-                {results!.membersTotal > 0 && (
-                  <section>
-                    <SectionHeader
-                      icon="🧑‍🌾" title="Floristas" count={results!.membersTotal} total={results!.membersTotal}
-                      onViewAll={results!.membersTotal > LIMIT_MEMBERS ? () => { setInput(""); setQuery(""); onViewAllMembers() } : undefined}
-                    />
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {results!.members.map((m) => (
-                        <MemberMini key={m.id} member={m} query={query} onClick={() => { onSelectMember(m); setInput(""); setQuery("") }} />
-                      ))}
-                    </div>
-                    {results!.membersTotal > LIMIT_MEMBERS && (
-                      <button onClick={() => { setInput(""); setQuery(""); onViewAllMembers() }} style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: "#C8849E", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                        + {results!.membersTotal - LIMIT_MEMBERS} floristas → Ver todas
-                      </button>
-                    )}
-                  </section>
-                )}
-
-                {/* 🎯 Em Missão */}
+                {/* 🎯 Em Missão — SEGUNDO */}
                 {results!.inMissionTotal > 0 && (
                   <section>
                     <SectionHeader
                       icon="🎯" title="Em Missão com esta flor" count={results!.inMissionTotal} total={results!.inMissionTotal}
-                      onViewAll={results!.inMissionTotal > LIMIT_MISSIONS ? () => { setInput(""); setQuery(""); onViewAllMissions() } : undefined}
+                      onViewAll={(results!.inMissionTotal > LIMIT_MISSIONS && onViewAllMissions) ? () => { setInput(""); setQuery(""); onViewAllMissions!() } : undefined}
                     />
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                       {results!.inMission.map((m) => (
@@ -324,8 +304,8 @@ export default function GlobalSearch({ flowers, members, onSelectFlower, onSelec
                           {m.name}
                         </button>
                       ))}
-                      {results!.inMissionTotal > LIMIT_MISSIONS && (
-                        <button onClick={() => { setInput(""); setQuery(""); onViewAllMissions() }} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(200,132,158,0.10)", color: "#C8849E", border: "1px solid rgba(200,132,158,0.20)", borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      {results!.inMissionTotal > LIMIT_MISSIONS && onViewAllMissions && (
+                        <button onClick={() => { setInput(""); setQuery(""); onViewAllMissions!() }} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: `${accentColor}1A`, color: accentColor, border: `1px solid ${accentColor}33`, borderRadius: 999, padding: "4px 10px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
                           +{results!.inMissionTotal - LIMIT_MISSIONS} → Ver missões
                         </button>
                       )}
@@ -333,21 +313,43 @@ export default function GlobalSearch({ flowers, members, onSelectFlower, onSelec
                   </section>
                 )}
 
-                {/* 📊 Resumo rápido */}
+                {/* 🌸 Flores */}
                 {results!.flowersTotal > 0 && (
-                  <section style={{ background: "rgba(200,132,158,0.05)", borderRadius: 12, padding: "10px 14px", border: "1px solid rgba(200,132,158,0.12)" }}>
-                    <p style={{ fontSize: 11, fontWeight: 800, color: "#9a7ab0", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 6px" }}>📊 Resumo</p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                      <span style={{ fontSize: 12, color: "#4D3750", fontWeight: 600 }}>
-                        👑 <strong>{results!.flowers.reduce((acc, f) => acc + f.owners, 0)}</strong> possuem
-                      </span>
-                      <span style={{ fontSize: 12, color: "#4D3750", fontWeight: 600 }}>
-                        🎯 <strong>{results!.inMissionTotal}</strong> disputando
-                      </span>
-                      <span style={{ fontSize: 12, color: "#4D3750", fontWeight: 600 }}>
-                        🌸 <strong>{results!.flowersTotal}</strong> flor{results!.flowersTotal !== 1 ? "es" : ""} encontrada{results!.flowersTotal !== 1 ? "s" : ""}
-                      </span>
+                  <section>
+                    <SectionHeader
+                      icon="🌸" title="Flores" count={results!.flowersTotal} total={results!.flowersTotal}
+                      onViewAll={(results!.flowersTotal > LIMIT_FLOWERS && onViewAllFlowers) ? () => { setInput(""); setQuery(""); onViewAllFlowers!() } : undefined}
+                    />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {results!.flowers.map((f) => (
+                        <FlowerMini key={f.id} flower={f} members={members} onClick={() => { onSelectFlower(f); setInput(""); setQuery("") }} />
+                      ))}
                     </div>
+                    {results!.flowersTotal > LIMIT_FLOWERS && onViewAllFlowers && (
+                      <button onClick={() => { setInput(""); setQuery(""); onViewAllFlowers!() }} style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: accentColor, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        + {results!.flowersTotal - LIMIT_FLOWERS} flores → Ver todas na Coleção
+                      </button>
+                    )}
+                  </section>
+                )}
+
+                {/* 🧑‍🌾 Floristas */}
+                {results!.membersTotal > 0 && (
+                  <section>
+                    <SectionHeader
+                      icon="🧑‍🌾" title="Floristas" count={results!.membersTotal} total={results!.membersTotal}
+                      onViewAll={(results!.membersTotal > LIMIT_MEMBERS && onViewAllMembers) ? () => { setInput(""); setQuery(""); onViewAllMembers!() } : undefined}
+                    />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {results!.members.map((m) => (
+                        <MemberMini key={m.id} member={m} query={query} onClick={() => { onSelectMember(m); setInput(""); setQuery("") }} />
+                      ))}
+                    </div>
+                    {results!.membersTotal > LIMIT_MEMBERS && onViewAllMembers && (
+                      <button onClick={() => { setInput(""); setQuery(""); onViewAllMembers!() }} style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: accentColor, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                        + {results!.membersTotal - LIMIT_MEMBERS} floristas → Ver todas
+                      </button>
+                    )}
                   </section>
                 )}
 

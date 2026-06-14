@@ -37,6 +37,13 @@ function hashStr(s: string) {
   let h=0; for(let i=0;i<s.length;i++) h=(Math.imul(31,h)+s.charCodeAt(i))|0; return h>>>0
 }
 
+function guildConfig(guild: string) {
+  const baby = (guild ?? "").toLowerCase().includes("baby")
+  return baby
+    ? { label: "🧸 Floralis Baby", short: "🧸 Baby",  border: "2px solid #D9C7FF", badgeBg: "rgba(180,140,255,0.88)", badgeColor: "#fff", guildBg: "rgba(217,199,255,0.20)", guildColor: "#7B60B0", guildBorder: "rgba(217,199,255,0.50)" }
+    : { label: "🦋 Floralis",      short: "🦋 Floralis", border: "2px solid #F5BFD1", badgeBg: "rgba(220,100,150,0.88)", badgeColor: "#fff", guildBg: "rgba(245,191,209,0.20)", guildColor: "#C8849E", guildBorder: "rgba(245,191,209,0.50)" }
+}
+
 // Gradientes para o banner quando não há foto (corresponde ao FloristasView)
 const bannerGradients = [
   "linear-gradient(135deg, #fff0f5, #f5eeff)",
@@ -140,6 +147,7 @@ export default function FloristasShowcase({ members, onViewAll, onSelectMember }
           const bio      = member.bio ? member.bio.slice(0,80).trimEnd()+(member.bio.length>80?"...":"") : null
           const bgGrad   = bannerGradient(member.name)
           const avGrad   = avatarGradient(member.name)
+          const gCfg     = guildConfig(member.guild ?? "")
 
           return (
             <motion.button key={member.id} onClick={() => setSelectedProfile(member)}
@@ -150,7 +158,7 @@ export default function FloristasShowcase({ members, onViewAll, onSelectMember }
               whileTap={{ scale:0.98 }}
               style={{
                 background:"white",
-                border: isToday ? "1.5px solid rgba(246,230,188,0.60)" : "1px solid #f0dded",
+                border: isToday ? "1.5px solid rgba(246,230,188,0.60)" : gCfg.border,
                 borderRadius:16,
                 boxShadow:"0 2px 12px rgba(180,100,140,0.08)",
                 overflow:"hidden",
@@ -198,9 +206,16 @@ export default function FloristasShowcase({ members, onViewAll, onSelectMember }
                   {member.name}
                 </p>
 
-                <span style={{ background:cargo.bg,color:cargo.color,borderRadius:999,padding:"2px 7px",fontSize:10,fontWeight:800,display:"inline-block",marginBottom:5 }}>
+                <span style={{ background:cargo.bg,color:cargo.color,borderRadius:999,padding:"2px 7px",fontSize:10,fontWeight:800,display:"inline-block",marginBottom:3 }}>
                   {cargo.icon} {member.cargo}
                 </span>
+
+                {/* Badge de guilda abaixo do cargo — nível 2 */}
+                <div style={{ marginBottom:5 }}>
+                  <span style={{ background:gCfg.guildBg,color:gCfg.guildColor,border:`1px solid ${gCfg.guildBorder}`,borderRadius:999,padding:"1px 7px",fontSize:9,fontWeight:800,display:"inline-block" }}>
+                    {gCfg.label}
+                  </span>
+                </div>
 
                 {member.birthday && (
                   <p style={{ fontSize:10,fontWeight:600,color:isToday?"#C8A050":"#b89ab8",margin:"0 0 5px",display:"flex",alignItems:"center",gap:3 }}>
