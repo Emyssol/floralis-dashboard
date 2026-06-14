@@ -112,11 +112,33 @@ export async function getDashboardData(forceRefresh = false): Promise<{ flowers:
 
     const cargoRaw = member.properties["🏷️ Cargo"]?.select?.name || "Membro"
 
+    // Campo Guilda — nome real no Notion: "🎖️ Guilda"
+    // Fallbacks para variações e busca dinâmica
+    const guildRaw = (() => {
+      // 1. Tenta chaves exatas conhecidas (mais específica primeiro)
+      const exact =
+        member.properties["🎖️ Guilda"]?.select?.name ||
+        member.properties["🏠 Guilda"]?.select?.name ||
+        member.properties["Guilda"]?.select?.name ||
+        member.properties["🦋 Guilda"]?.select?.name ||
+        member.properties["guilda"]?.select?.name
+
+      if (exact) return exact
+
+      // 2. Busca dinâmica: qualquer propriedade cujo nome contenha "uilda"
+      const keys = Object.keys(member.properties)
+      const key = keys.find((k) => k.toLowerCase().includes("uilda"))
+      if (key) return member.properties[key]?.select?.name ?? null
+
+      return null
+    })() ?? "🦋 Floralis"
+
     return {
       id:         member.id,
       name:       member.properties["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista",
       cargo:      stripEmoji(cargoRaw),
       status:     stripEmoji(statusRaw),
+      guild:      guildRaw,
       lastEdited: member.last_edited_time as string,
       birthday:   member.properties["🎂 Aniversário"]?.date?.start ?? null,
       avatar:

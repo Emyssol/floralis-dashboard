@@ -24,6 +24,17 @@ const cargoStyle: Record<string, { bg: string; color: string; icon: string }> = 
   Membro:      { bg: "#F0F5FF", color: "#3060C0", icon: "🌿" },
 }
 
+function guildBadge(guild: string) {
+  if (!guild) return null
+  const isBaby = guild.includes("Baby")
+  return {
+    label: isBaby ? "🧸 Floralis Baby" : "🦋 Floralis",
+    bg:    isBaby ? "rgba(160,220,180,0.20)" : "rgba(232,184,203,0.18)",
+    color: isBaby ? "#4a8a5a"               : "#C8849E",
+    border:isBaby ? "rgba(160,220,180,0.38)" : "rgba(232,184,203,0.35)",
+  }
+}
+
 export default function FloristasView({ flowers, members, onSelectMember }: Props) {
   const ranked = members
     .map((m) => ({
@@ -44,6 +55,7 @@ export default function FloristasView({ flowers, members, onSelectMember }: Prop
           const cargo = cargoStyle[member.cargo] ?? cargoStyle["Membro"]
           const ini = initials(member.name)
           const barWidth = topCount > 0 ? (count / topCount) * 100 : 0
+          const guild = guildBadge(member.guild)
 
           return (
             <motion.button
@@ -89,12 +101,22 @@ export default function FloristasView({ flowers, members, onSelectMember }: Prop
 
               {/* Info */}
               <div style={{ padding: "9px 11px 11px" }}>
-                <p style={{ fontWeight: 900, fontSize: 12, color: "#3a2a3a", marginBottom: 5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                <p style={{ fontWeight: 900, fontSize: 12, color: "#3a2a3a", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                   title={member.name}>{member.name}</p>
 
-                <span style={{ background: cargo.bg, color: cargo.color, borderRadius: 999, padding: "2px 7px", fontSize: 10, fontWeight: 800, display: "inline-block", marginBottom: 7 }}>
+                {/* Cargo */}
+                <span style={{ background: cargo.bg, color: cargo.color, borderRadius: 999, padding: "2px 7px", fontSize: 10, fontWeight: 800, display: "inline-block", marginBottom: 3 }}>
                   {cargo.icon} {member.cargo}
                 </span>
+
+                {/* Selo da guilda */}
+                {guild && (
+                  <div style={{ marginBottom: 6 }}>
+                    <span style={{ background: guild.bg, color: guild.color, borderRadius: 999, padding: "2px 7px", fontSize: 9, fontWeight: 800, border: `1px solid ${guild.border}`, display: "inline-block" }}>
+                      {guild.label}
+                    </span>
+                  </div>
+                )}
 
                 <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginBottom: 5 }}>
                   <span style={{ fontSize: 20, fontWeight: 900, color: "#d4608a", lineHeight: 1 }}>{count}</span>

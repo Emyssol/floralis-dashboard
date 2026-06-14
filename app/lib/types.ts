@@ -14,6 +14,7 @@ export interface Member {
   name: string
   cargo: string
   status: string
+  guild: string             // "🦋 Floralis" | "🧸 Floralis Baby"
   lastEdited: string        // ISO 8601 — last_edited_time do Notion
   birthday: string | null   // "YYYY-MM-DD" ou null
   avatar: string | null

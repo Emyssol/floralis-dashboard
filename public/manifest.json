@@ -1,0 +1,24 @@
+{
+  "name": "Floralis",
+  "short_name": "Floralis",
+  "description": "Floralis Guild Collection Dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF9F2",
+  "theme_color": "#D4608A",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/iconfloralis.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

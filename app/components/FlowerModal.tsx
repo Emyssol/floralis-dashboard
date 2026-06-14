@@ -9,6 +9,7 @@ import type { Flower, Member } from "@/app/lib/types"
 interface Props {
   flower: Flower
   members: Member[]
+  allMembers?: Member[]   // lista completa (ambas as guildas) — usada no seletor "Eu tenho essa flor"
   onClose: () => void
 }
 
@@ -31,12 +32,13 @@ function initials(name: string) {
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
-function ReportButton({ flower, members }: { flower: Flower; members: Member[] }) {
+function ReportButton({ flower, members, currentGuildMembers }: { flower: Flower; members: Member[]; currentGuildMembers: Member[] }) {
   const [open, setOpen]         = useState(false)
   const [selected, setSelected] = useState<Member | null>(null)
   const [loading, setLoading]   = useState(false)
   const [sent, setSent]         = useState(false)
   const [error, setError]       = useState("")
+  const [memberSearch, setMemberSearch] = useState("")
 
   async function handleSend() {
     if (!selected) return
@@ -99,26 +101,100 @@ function ReportButton({ flower, members }: { flower: Flower; members: Member[] }
               <p style={{ fontSize: 12, fontWeight: 700, color: "#3a2a3a", margin: "0 0 10px" }}>
                 Selecione seu perfil de florista:
               </p>
-              <select
-                value={selected?.id ?? ""}
-                onChange={(e) => setSelected(members.find((m) => m.id === e.target.value) ?? null)}
-                style={{
-                  width: "100%",
-                  background: "white",
-                  border: `1.5px solid ${selected ? "#d4608a" : "#f0dded"}`,
-                  borderRadius: 12,
-                  padding: "10px 36px 10px 12px",
-                  fontSize: 14, fontWeight: 600,
-                  color: selected ? "#d4608a" : "#9a7ab0",
-                  outline: "none", cursor: "pointer", appearance: "none",
-                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d4608a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`,
-                  backgroundRepeat: "no-repeat",
-                  backgroundPosition: "right 12px center",
-                }}
-              >
-                <option value="">Escolha sua florista...</option>
-                {[...members].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </select>
+              {selected ? (
+                /* Florista selecionada — chip com opção de trocar */
+                <div style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  background: "#FFF0F5", border: "1.5px solid #d4608a",
+                  borderRadius: 12, padding: "10px 12px",
+                }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "#d4608a" }}>
+                    🌸 {selected.name}
+                  </span>
+                  <button
+                    onClick={() => { setSelected(null); setMemberSearch("") }}
+                    style={{ background: "rgba(212,96,138,0.12)", border: "none", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#d4608a", cursor: "pointer" }}
+                  >
+                    Trocar
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={memberSearch}
+                    onChange={(e) => setMemberSearch(e.target.value)}
+                    placeholder="🔎 Digite seu nome..."
+                    autoFocus
+                    style={{
+                      width: "100%",
+                      background: "white",
+                      border: "1.5px solid #f0dded",
+                      borderRadius: 12,
+                      padding: "10px 12px",
+                      fontSize: 14, fontWeight: 600,
+                      color: "#3a2a3a",
+                      outline: "none",
+                    }}
+                  />
+
+                  {/* Lista de sugestões — aparece a partir de 1 caractere */}
+                  {memberSearch.trim().length > 0 && (() => {
+                    const currentIds = new Set(currentGuildMembers.map((m) => m.id))
+                    const sortByName = (a: Member, b: Member) => a.name.localeCompare(b.name, "pt-BR")
+                    const q = memberSearch.trim().toLowerCase()
+                    const visible = members.filter((m) => m.name.toLowerCase().includes(q))
+                    const current = visible.filter((m) => currentIds.has(m.id)).sort(sortByName)
+                    const others  = visible.filter((m) => !currentIds.has(m.id)).sort(sortByName)
+                    const isBaby  = (g: string) => (g ?? "").toLowerCase().includes("baby")
+                    const currentLabel = current[0] && isBaby(current[0].guild) ? "🧸 Floralis Baby" : "🦋 Floralis"
+                    const othersLabel  = others[0]  && isBaby(others[0].guild)  ? "🧸 Floralis Baby" : "🦋 Floralis"
+
+                    if (current.length === 0 && others.length === 0) {
+                      return (
+                        <div style={{ marginTop: 6, padding: "10px 12px", textAlign: "center", fontSize: 12, color: "#c4a8c4", fontStyle: "italic" }}>
+                          Nenhum nome encontrado
+                        </div>
+                      )
+                    }
+
+                    const renderGroup = (label: string, list: Member[]) => (
+                      <div key={label}>
+                        <p style={{ fontSize: 10, fontWeight: 800, color: "#b89ab8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "8px 0 4px", padding: "0 4px" }}>
+                          {label}
+                        </p>
+                        {list.map((m) => (
+                          <button
+                            key={m.id}
+                            onClick={() => { setSelected(m); setMemberSearch("") }}
+                            style={{
+                              display: "flex", alignItems: "center", gap: 8,
+                              width: "100%", textAlign: "left",
+                              background: "white", border: "1px solid #f5eef8",
+                              borderRadius: 10, padding: "8px 10px",
+                              fontSize: 13, fontWeight: 600, color: "#3a2a3a",
+                              cursor: "pointer", marginBottom: 4,
+                            }}
+                          >
+                            {m.avatar
+                              ? <img src={m.avatar} alt={m.name} style={{ width: 26, height: 26, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                              : <div style={{ width: 26, height: 26, borderRadius: 8, background: "#FFF0F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>🌸</div>
+                            }
+                            {m.name}
+                          </button>
+                        ))}
+                      </div>
+                    )
+
+                    return (
+                      <div style={{ marginTop: 6, maxHeight: 180, overflowY: "auto" }}>
+                        {current.length > 0 && renderGroup(currentLabel, current)}
+                        {others.length > 0 && renderGroup(othersLabel, others)}
+                      </div>
+                    )
+                  })()}
+                </>
+              )}
               {error && <p style={{ fontSize: 11, color: "#c0304a", margin: "8px 0 0" }}>{error}</p>}
               <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                 <button
@@ -133,7 +209,7 @@ function ReportButton({ flower, members }: { flower: Flower; members: Member[] }
                   }}
                 >{loading ? "Enviando..." : "Confirmar"}</button>
                 <button
-                  onClick={() => { setOpen(false); setSelected(null); setError("") }}
+                  onClick={() => { setOpen(false); setSelected(null); setError(""); setMemberSearch("") }}
                   style={{ background: "#f5eef8", border: "none", borderRadius: 10, padding: "11px 14px", fontSize: 13, color: "#b89ab8", cursor: "pointer", fontWeight: 700 }}
                 >Cancelar</button>
               </div>
@@ -148,7 +224,8 @@ function ReportButton({ flower, members }: { flower: Flower; members: Member[] }
   )
 }
 
-export default function FlowerModal({ flower, members, onClose }: Props) {
+export default function FlowerModal({ flower, members, allMembers, onClose }: Props) {
+  const reportMembers = allMembers ?? members
   const [tab, setTab]           = useState<ModalTab>("info")
   const [isMobile, setIsMobile] = useState(false)
   const rarity     = rarityConfig[flower.rarity as keyof typeof rarityConfig]
@@ -366,7 +443,7 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
                 </div>
               )}
 
-              <ReportButton flower={flower} members={members} />
+              <ReportButton flower={flower} members={reportMembers} currentGuildMembers={members} />
             </div>
           )}
 
@@ -397,7 +474,7 @@ export default function FlowerModal({ flower, members, onClose }: Props) {
                 </div>
               ))}
               <div style={{ marginTop: 4 }}>
-                <ReportButton flower={flower} members={members} />
+                <ReportButton flower={flower} members={reportMembers} currentGuildMembers={members} />
               </div>
             </div>
           )}

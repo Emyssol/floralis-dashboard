@@ -45,9 +45,17 @@ const cargoStyle: Record<string, { bg: string; color: string; icon: string }> = 
   Membro:     { bg: "#F0F5FF", color: "#3060C0", icon: "🌿" },
 }
 
+function guildConfig(guild: string) {
+  const baby = (guild ?? "").toLowerCase().includes("baby")
+  return baby
+    ? { label: "🧸 Floralis Baby", border: "2px solid #D9C7FF", topBorder: "4px solid #D9C7FF", bg: "rgba(217,199,255,0.20)", color: "#7B60B0", borderStyle: "rgba(217,199,255,0.50)" }
+    : { label: "🦋 Floralis",      border: "2px solid #F5BFD1", topBorder: "4px solid #F5BFD1", bg: "rgba(245,191,209,0.20)", color: "#C8849E", borderStyle: "rgba(245,191,209,0.50)" }
+}
+
 export default function FloristProfileModal({ member, onClose }: Props) {
   const ini   = initials(member.name)
   const cargo = cargoStyle[member.cargo] ?? cargoStyle["Membro"]
+  const gCfg  = guildConfig(member.guild ?? "")
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => e.key === "Escape" && onClose()
@@ -86,6 +94,7 @@ export default function FloristProfileModal({ member, onClose }: Props) {
           boxShadow: "0 -4px 32px rgba(80,30,60,0.14)",
           display: "flex", flexDirection: "column",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          borderTop: gCfg.topBorder,
         }}
         initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
         transition={{ type: "spring", stiffness: 340, damping: 34 }}
@@ -150,6 +159,10 @@ export default function FloristProfileModal({ member, onClose }: Props) {
               }}>
                 <span style={{ width:5,height:5,borderRadius:"50%",background:"#5cb87a",display:"inline-block" }} />
                 {member.status}
+              </span>
+              {/* Badge de guilda */}
+              <span style={{ background:gCfg.bg,color:gCfg.color,borderRadius:999,padding:"3px 10px",fontSize:11,fontWeight:800,border:`1px solid ${gCfg.borderStyle}` }}>
+                {gCfg.label}
               </span>
             </div>
           </div>

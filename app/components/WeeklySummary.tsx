@@ -8,6 +8,7 @@ import type { Flower, Member } from "@/app/lib/types"
 interface Props {
   flowers: Flower[]
   members: Member[]
+  onOpenAnalytics?: () => void
 }
 
 // ── Modal: Floristas Em Missão ──────────────────────────────────────
@@ -254,22 +255,30 @@ function CompetitionModal({ flowers, members, onClose }: { flowers: Flower[]; me
 }
 
 // ── WeeklySummary principal ─────────────────────────────────────────
-const statConfig = [
-  { icon: "/icons/mission.png",  label: "Em Missão",     accent: "#C8849E", tint: "rgba(232,184,203,0.10)", border: "rgba(232,184,203,0.26)", modal: "missao"      as const },
-  { icon: "/icons/ranking.png",  label: "Em Competição", accent: "#9B7FCC", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "competicao"  as const },
-  { icon: "/icons/flores.png",   label: "Exclusivas",    accent: "#7FB890", tint: "rgba(212,234,216,0.12)", border: "rgba(212,234,216,0.30)", modal: null           },
+type ModalType = "missao" | "competicao" | "analytics" | null
+
+interface StatItem {
+  icon: string
+  label: string
+  accent: string
+  tint: string
+  border: string
+  modal: ModalType
+}
+
+const statConfig: StatItem[] = [
+  { icon: "/icons/mission.png",  label: "Em Missão",     accent: "#C8849E", tint: "rgba(232,184,203,0.10)", border: "rgba(232,184,203,0.26)", modal: "missao"     },
+  { icon: "/icons/ranking.png",  label: "Em Competição", accent: "#9B7FCC", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "competicao" },
+  { icon: "/icons/grafics.png",  label: "Analytics",     accent: "#7060A8", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "analytics"  },
 ]
 
-type ModalType = "missao" | "competicao" | null
-
-export default function WeeklySummary({ flowers, members }: Props) {
+export default function WeeklySummary({ flowers, members, onOpenAnalytics }: Props) {
   const [openModal, setOpenModal] = useState<ModalType>(null)
 
   const values = useMemo(() => {
-    const mission    = members.filter((m) => m.status === "Em Missão")
-    const disputa    = new Set(mission.flatMap((m) => m.favorites))
-    const exclusivas = flowers.filter((f) => f.owners === 1).length
-    return [mission.length, disputa.size, exclusivas]
+    const mission = members.filter((m) => m.status === "Em Missão")
+    const disputa = new Set(mission.flatMap((m) => m.favorites))
+    return [mission.length, disputa.size, null] // Analytics não tem valor numérico
   }, [flowers, members])
 
   return (
@@ -282,32 +291,33 @@ export default function WeeklySummary({ flowers, members }: Props) {
         </p>
       </div>
 
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        overflowX: "auto",
-        WebkitOverflowScrolling: "touch" as any,
-        scrollbarWidth: "none" as any,
-        paddingBottom: 4,
-        marginLeft: -4, paddingLeft: 4,
-        marginRight: -4, paddingRight: 4,
-      }}>
+      <div className="weekly-pills">
         {statConfig.map((s, i) => {
           const clickable = s.modal !== null
-          const Tag = clickable ? "button" : "div"
+          const Tag = motion.button
+          const handleClick = clickable
+            ? () => {
+                if (s.modal === "analytics") onOpenAnalytics?.()
+                else setOpenModal(s.modal as ModalType)
+              }
+            : undefined
           return (
             <Tag
               key={s.label}
-              onClick={clickable ? () => setOpenModal(s.modal) : undefined}
+              onClick={handleClick}
+              whileHover={clickable ? { y: -2, boxShadow: "0 6px 18px rgba(160,100,140,0.14)" } : undefined}
+              whileTap={clickable ? { scale: 0.97 } : undefined}
               style={{
-                display: "inline-flex", alignItems: "center", gap: 12,
+                display: "flex", alignItems: "center", gap: 12,
+                width: "100%",
                 background: `linear-gradient(160deg, rgba(255,255,255,0.88) 0%, ${s.tint} 100%)`,
-                border: `1px solid ${s.border}`,
-                borderRadius: 999,
-                padding: "11px 20px",
-                flexShrink: 0,
+                border: clickable ? `1.5px solid ${s.accent}40` : `1px solid ${s.border}`,
+                borderRadius: 18,
+                padding: "14px 20px",
                 boxShadow: "0 2px 10px rgba(160,100,140,0.05)",
                 position: "relative", overflow: "hidden",
                 cursor: clickable ? "pointer" : "default",
+                transition: "box-shadow 0.2s ease",
                 ...(clickable ? { fontFamily: "inherit" } : {}),
               }}
             >
@@ -317,13 +327,23 @@ export default function WeeklySummary({ flowers, members }: Props) {
               />
               <img src={s.icon} alt="" width={24} height={24} style={{ objectFit: "contain", flexShrink: 0, position: "relative", zIndex: 1 }} />
               <div style={{ position: "relative", zIndex: 1 }}>
-                <div style={{ fontSize: 22, fontWeight: 900, color: s.accent, lineHeight: 1, letterSpacing: "-0.02em" }}>{values[i]}</div>
-                <div style={{ fontSize: 10, fontWeight: 600, color: "#B8A0B8", marginTop: 2, whiteSpace: "nowrap" }}>
-                  {s.label === "Em Missão"     ? "Floristas em missão"   :
-                   s.label === "Em Competição" ? "Flores na competição"  :
-                   s.label}
-                  {clickable && <span style={{ marginLeft: 4, opacity: 0.6 }}>→</span>}
-                </div>
+                {s.label === "Analytics" ? (
+                  <>
+                    <div style={{ fontSize: 18, fontWeight: 900, color: s.accent, lineHeight: 1, letterSpacing: "-0.01em" }}>Analytics</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#B8A0B8", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                      Ver mais
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: `${s.accent}22`, color: s.accent, fontSize: 9, fontWeight: 900 }}>→</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 22, fontWeight: 900, color: s.accent, lineHeight: 1, letterSpacing: "-0.02em" }}>{values[i]}</div>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: "#B8A0B8", marginTop: 2, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
+                      {s.label === "Em Missão" ? "Floristas em missão" : "Flores na competição"}
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: `${s.accent}22`, color: s.accent, fontSize: 9, fontWeight: 900 }}>→</span>
+                    </div>
+                  </>
+                )}
               </div>
             </Tag>
           )
@@ -339,7 +359,17 @@ export default function WeeklySummary({ flowers, members }: Props) {
         )}
       </AnimatePresence>
 
-      <style>{`div::-webkit-scrollbar{display:none;}`}</style>
+      <style>{`
+        div::-webkit-scrollbar { display: none; }
+        .weekly-pills {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+        @media (min-width: 480px) {
+          .weekly-pills { grid-template-columns: repeat(3, 1fr); }
+        }
+      `}</style>
     </>
   )
 }
