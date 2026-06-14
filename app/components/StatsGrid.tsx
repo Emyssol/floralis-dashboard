@@ -12,12 +12,29 @@ interface Props {
   onOpenFullPage: (page: NonNullable<FullPage>) => void
 }
 
-const cards = [
+interface Card {
+  label: string
+  description: string
+  page: NonNullable<FullPage>
+  icon: string | null
+  iconEmoji: string | null
+  iconBaby: string | null
+  bg: string | null
+  canto: string | null
+  accent: string
+  border: string
+  shadow: string
+  badge: string | null
+}
+
+const cards: Card[] = [
   {
     label: "Missões",
     description: "Veja quem está competindo e descubra flores ainda em disputa.",
     page: "missoes"        as const,
     icon: "/icons/trofeu.png",
+    iconEmoji: null,
+    iconBaby: null,
     bg: "/background/fundo-verde.png",
     canto: null,
     accent: "#5A8A6A",
@@ -30,6 +47,8 @@ const cards = [
     description: "Explore sua coleção e acompanhe seu progresso.",
     page: "colecao"        as const,
     icon: "/icons/garden.png",
+    iconEmoji: null,
+    iconBaby: null,
     bg: null,
     canto: "/ornaments/canto-rosa.png",
     accent: "#B06080",
@@ -42,6 +61,8 @@ const cards = [
     description: "Gerencie suas flores da competição e acompanhe outras floristas também.",
     page: "floristas"      as const,
     icon: "/icons/team.png",
+    iconEmoji: null,
+    iconBaby: null,
     bg: null,
     canto: "/ornaments/canto-flor.png",
     accent: "#7060A8",
