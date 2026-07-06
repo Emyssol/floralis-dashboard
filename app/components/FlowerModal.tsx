@@ -346,7 +346,7 @@ export default function FlowerModal({ flower, members, allMembers, onClose }: Pr
                 {[
                   { icon: "⭐", value: flower.points, label: "Pontos",   color: "#D97706", bg: "#FFFBEB" },
                   { icon: "👥", value: flower.owners, label: "Quem tem", color: "#C8849E", bg: "#FFF5F8" },
-                  { icon: "🌙", value: flower.origin, label: "Origem",   color: "#9B7FCC", bg: "#F8F5FF" },
+                  { icon: "💎", value: flower.diamonds || flower.points * 3, label: "Dobra nas Missões", color: "#7040A8", bg: "#F8F5FF" },
                 ].map((s) => (
                   <div key={s.label} style={{ background: s.bg, borderRadius: 14, padding: "12px 8px", textAlign: "center" }}>
                     <div style={{ fontSize: 16, marginBottom: 3 }}>{s.icon}</div>
@@ -356,9 +356,9 @@ export default function FlowerModal({ flower, members, allMembers, onClose }: Pr
                 ))}
               </div>
 
-              {/* Card de diamantes — compacto, sem palavra "diamantes" */}
+              {/* Card de origem — horizontal, largura total */}
               <div style={{
-                background: "linear-gradient(135deg, #f0f0ff 0%, #e8e0ff 100%)",
+                background: "#F8F5FF",
                 border: "1px solid rgba(155,127,204,0.30)",
                 borderRadius: 12, padding: "8px 12px",
                 display: "flex", alignItems: "center", gap: 10,
@@ -368,17 +368,14 @@ export default function FlowerModal({ flower, members, allMembers, onClose }: Pr
                   background: "rgba(155,127,204,0.15)",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 16,
-                }}>💎</div>
+                }}>🌙</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, color: "#9B7FCC", margin: "0 0 1px", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Dobra nas missões
+                  <span style={{ fontSize: 13, fontWeight: 900, color: "#9B7FCC", lineHeight: 1.2, wordBreak: "break-word" }}>
+                    {flower.origin}
+                  </span>
+                  <p style={{ fontSize: 9, fontWeight: 700, color: "#c4a8c4", margin: "2px 0 0", textTransform: "uppercase" }}>
+                    Origem
                   </p>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: "#7040A8", lineHeight: 1 }}>
-                      {flower.diamonds || flower.points * 3}
-                    </span>
-                    <span style={{ fontSize: 13 }}>💎</span>
-                  </div>
                 </div>
               </div>
 

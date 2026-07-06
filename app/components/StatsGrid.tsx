@@ -82,7 +82,7 @@ const cards: Card[] = [
     accent: "#5A9070",
     border: "rgba(160,220,180,0.42)",
     shadow: "rgba(100,180,130,0.12)",
-    badge: "NOVO",
+    badge: null,
   },
 ]
 

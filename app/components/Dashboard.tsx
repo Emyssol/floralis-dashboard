@@ -366,7 +366,7 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
 
           {/* 📖 Florapédia — banner link para Notion */}
           <a
-            href="https://regular-swim-966.notion.site/Florap-dia-37e210e17718812cafa0d2c58151a1aa"
+            href="https://regular-swim-966.notion.site/FLORAP-DIA-383210e177188055b455d5796ab5b24e"
             target="_blank"
             rel="noopener noreferrer"
             style={{ display: "block", textDecoration: "none", marginBottom: 8 }}
