@@ -47,8 +47,17 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
   const [editingFavs, setEditingFavs] = useState(false)
   const [selected, setSelected]       = useState<Set<string>>(new Set(member.favorites))
   const [sent, setSent]               = useState(false)
+  const [sentMode, setSentMode]       = useState<"auto" | "pending">("pending")
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState("")
+  const [idCopied, setIdCopied]       = useState(false)
+
+  function handleCopyId() {
+    if (!member.gameId) return
+    navigator.clipboard.writeText(String(member.gameId))
+    setIdCopied(true)
+    setTimeout(() => setIdCopied(false), 1500)
+  }
 
   function toggleFlower(name: string) {
     setSelected((prev) => {
@@ -63,12 +72,29 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
     setLoading(true); setError("")
     try {
       const floresIds = flowers.filter((f) => selected.has(f.name)).map((f) => f.id)
+
+      // 1ª tentativa: substituir direto no Notion (sem passar por solicitação)
+      const autoRes = await fetch("/api/flores/marcar-competicao", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ florista_id: member.id, flores_ids: floresIds }),
+      })
+
+      if (autoRes.ok) {
+        setSentMode("auto")
+        setSent(true)
+        setTimeout(() => { setSent(false); setEditingFavs(false) }, 2500)
+        return
+      }
+
+      // Fallback: atualização automática falhou (ex: sem permissão ou sem sessão) → cria solicitação Pendente como antes
       const res = await fetch("/api/solicitacoes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tipo:"Competição", florista_id:member.id, florista_nome:member.name, flores_ids:floresIds, flores_nomes:Array.from(selected) }),
       })
       if (!res.ok) throw new Error("Erro ao enviar")
+      setSentMode("pending")
       setSent(true)
       setTimeout(() => { setSent(false); setEditingFavs(false) }, 2500)
     } catch { setError("Erro ao enviar. Tente novamente.") }
@@ -153,6 +179,31 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                     </span>
                   )
                 })()}
+                {/* ID de jogador — clique pra copiar */}
+                {member.gameId != null && (
+                  <button
+                    onClick={handleCopyId}
+                    title="Copiar ID do jogador"
+                    style={{
+                      background: idCopied ? "rgba(92,184,122,0.18)" : "rgba(200,160,190,0.12)",
+                      color: idCopied ? "#4a8a5a" : "#85667F",
+                      border: `1px solid ${idCopied ? "rgba(92,184,122,0.35)" : "rgba(200,160,190,0.22)"}`,
+                      borderRadius: 999, padding: "2px 9px", fontSize: 10, fontWeight: 700,
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    {idCopied ? "✓ Copiado!" : (
+                      <>
+                        🆔 {member.gameId}
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2"/>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -229,7 +280,11 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                     {sent ? (
                       <div style={{ background:"rgba(212,234,216,0.25)",border:"1px solid rgba(212,234,216,0.55)",borderRadius:16,padding:20,textAlign:"center" }}>
                         <p style={{ fontSize:28,margin:0 }}>✅</p>
-                        <p style={{ fontSize:13,fontWeight:700,color:"#4a8a5a",marginTop:8 }}>Solicitação enviada! A admin vai atualizar em breve. 🌸</p>
+                        <p style={{ fontSize:13,fontWeight:700,color:"#4a8a5a",marginTop:8 }}>
+                          {sentMode === "auto"
+                            ? "Lista atualizada! Já está valendo pra esta semana. 🌸"
+                            : "Solicitação enviada! A admin vai atualizar em breve. 🌸"}
+                        </p>
                       </div>
                     ) : (
                       <div style={{ background:"rgba(255,255,255,0.80)",border:"1px solid rgba(200,160,190,0.20)",borderRadius:16,padding:14 }}>

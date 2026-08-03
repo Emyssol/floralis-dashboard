@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist } from "next/font/google"
 import "./globals.css"
 import TextureBackground from "@/app/components/TextureBackground"
+import { Providers } from "@/app/providers"
 
 const geist = Geist({
   variable: "--font-geist",
@@ -68,7 +69,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full">
         <TextureBackground />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

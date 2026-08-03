@@ -19,6 +19,7 @@ export interface Member {
   birthday: string | null   // "YYYY-MM-DD" ou null
   avatar: string | null
   bio: string
+  gameId: number | null     // "ID de Jogador (a)" no Notion
   flowers: string[]         // nomes das flores possuídas
   favorites: string[]       // nomes das flores para competição
 }

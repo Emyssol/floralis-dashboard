@@ -146,6 +146,7 @@ export async function getDashboardData(forceRefresh = false): Promise<{ flowers:
         member.properties["🖼️ Avatar"]?.files?.[0]?.external?.url ||
         null,
       bio:       member.properties["📝 Bio"]?.rich_text?.[0]?.plain_text || "",
+      gameId:    member.properties["ID de Jogador (a)"]?.number ?? null,
       flowers:   flowerIds.map((id) => flowerById[id]).filter(Boolean),
       favorites: favoriteIds.map((id) => flowerById[id]).filter(Boolean),
     }
