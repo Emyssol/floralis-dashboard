@@ -93,6 +93,22 @@ export default function ClientDashboard({ initialFlowers, initialMembers, onReva
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   useEffect(() => { setMounted(true); if (initialFlowers) setLastUpdated(new Date()) }, [])
 
+  function handleFlowerOwned(flowerId: string, floristaId: string) {
+    const flowerName = flowers.find((f) => f.id === flowerId)?.name
+    if (!flowerName) return
+
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === floristaId && !m.flowers.includes(flowerName)
+          ? { ...m, flowers: [...m.flowers, flowerName] }
+          : m
+      )
+    )
+    setFlowers((prev) =>
+      prev.map((f) => (f.id === flowerId ? { ...f, owners: f.owners + 1 } : f))
+    )
+  }
+
   async function load() {
     setLoading(true)
     setError("")
@@ -132,7 +148,7 @@ export default function ClientDashboard({ initialFlowers, initialMembers, onReva
 
   return (
     <>
-      <Dashboard flowers={flowers} members={members} />
+      <Dashboard flowers={flowers} members={members} onFlowerOwned={handleFlowerOwned} />
       {/* Botão de atualização flutuante */}
       <button
         onClick={handleRefresh}

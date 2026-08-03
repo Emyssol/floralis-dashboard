@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion"
 import ModalPortal from "@/app/components/ModalPortal"
 import { useState, useEffect } from "react"
+import { useSession } from "next-auth/react"
 import { rarityConfig } from "@/app/lib/rarity"
 import type { Flower, Member } from "@/app/lib/types"
 
@@ -11,6 +12,7 @@ interface Props {
   members: Member[]
   allMembers?: Member[]   // lista completa (ambas as guildas) — usada no seletor "Eu tenho essa flor"
   onClose: () => void
+  onFlowerOwned?: (flowerId: string, floristaId: string) => void
 }
 
 type ModalTab = "info" | "floristas"
@@ -32,32 +34,57 @@ function initials(name: string) {
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
-function ReportButton({ flower, members, currentGuildMembers }: { flower: Flower; members: Member[]; currentGuildMembers: Member[] }) {
+function ReportButton({ flower, onFlowerOwned }: { flower: Flower; onFlowerOwned?: (flowerId: string, floristaId: string) => void }) {
+  const { data: session } = useSession()
+  const florista = session?.user
+
   const [open, setOpen]         = useState(false)
-  const [selected, setSelected] = useState<Member | null>(null)
   const [loading, setLoading]   = useState(false)
   const [sent, setSent]         = useState(false)
+  const [sentMode, setSentMode] = useState<"auto" | "pending">("pending")
   const [error, setError]       = useState("")
-  const [memberSearch, setMemberSearch] = useState("")
 
-  async function handleSend() {
-    if (!selected) return
+  async function handleConfirm() {
+    if (!florista?.id) return
     setLoading(true); setError("")
     try {
+      // 1ª tentativa: atualizar direto no Notion (sem passar por solicitação)
+      const autoRes = await fetch("/api/flores/marcar-posse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          flower_id: flower.id,
+          florista_id: florista.id,
+        }),
+      })
+
+      if (autoRes.ok) {
+        const data = await autoRes.json().catch(() => null)
+        if (data?.alreadyHad === false) {
+          onFlowerOwned?.(flower.id, florista.id)
+        }
+        setSentMode("auto")
+        setSent(true)
+        setTimeout(() => { setSent(false); setOpen(false) }, 2500)
+        return
+      }
+
+      // Fallback: atualização automática falhou → cria solicitação Pendente como antes
       const res = await fetch("/api/solicitacoes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tipo: "Possui Flor",
-          florista_id: selected.id,
-          florista_nome: selected.name,
+          florista_id: florista.id,
+          florista_nome: florista.name,
           flores_ids: [flower.id],
           flores_nomes: [flower.name],
         }),
       })
       if (!res.ok) throw new Error("Erro ao enviar")
+      setSentMode("pending")
       setSent(true)
-      setTimeout(() => { setSent(false); setOpen(false); setSelected(null) }, 2500)
+      setTimeout(() => { setSent(false); setOpen(false) }, 2500)
     } catch { setError("Erro ao enviar. Tente novamente.") }
     finally { setLoading(false) }
   }
@@ -93,128 +120,36 @@ function ReportButton({ flower, members, currentGuildMembers }: { flower: Flower
             <div style={{ textAlign: "center" }}>
               <p style={{ fontSize: 28, margin: 0 }}>✅</p>
               <p style={{ fontSize: 13, fontWeight: 700, color: "#15803d", marginTop: 6 }}>
-                Solicitação enviada! A admin vai atualizar em breve. 🌸
+                {sentMode === "auto"
+                  ? "Flor atualizada! Já está no seu perfil. 🌸"
+                  : "Solicitação enviada! A admin vai atualizar em breve. 🌸"}
               </p>
             </div>
           ) : (
             <>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#3a2a3a", margin: "0 0 10px" }}>
-                Selecione seu perfil de florista:
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#3a2a3a", margin: "0 0 12px" }}>
+                Confirmar que <span style={{ color: "#d4608a" }}>{florista?.name ?? "você"}</span> tem esta flor?
               </p>
-              {selected ? (
-                /* Florista selecionada — chip com opção de trocar */
-                <div style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  background: "#FFF0F5", border: "1.5px solid #d4608a",
-                  borderRadius: 12, padding: "10px 12px",
-                }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: "#d4608a" }}>
-                    🌸 {selected.name}
-                  </span>
-                  <button
-                    onClick={() => { setSelected(null); setMemberSearch("") }}
-                    style={{ background: "rgba(212,96,138,0.12)", border: "none", borderRadius: 999, padding: "4px 10px", fontSize: 11, fontWeight: 700, color: "#d4608a", cursor: "pointer" }}
-                  >
-                    Trocar
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={memberSearch}
-                    onChange={(e) => setMemberSearch(e.target.value)}
-                    placeholder="🔎 Digite seu nome..."
-                    autoFocus
-                    style={{
-                      width: "100%",
-                      background: "white",
-                      border: "1.5px solid #f0dded",
-                      borderRadius: 12,
-                      padding: "10px 12px",
-                      fontSize: 14, fontWeight: 600,
-                      color: "#3a2a3a",
-                      outline: "none",
-                    }}
-                  />
-
-                  {/* Lista de sugestões — aparece a partir de 1 caractere */}
-                  {memberSearch.trim().length > 0 && (() => {
-                    const currentIds = new Set(currentGuildMembers.map((m) => m.id))
-                    const sortByName = (a: Member, b: Member) => a.name.localeCompare(b.name, "pt-BR")
-                    const q = memberSearch.trim().toLowerCase()
-                    const visible = members.filter((m) => m.name.toLowerCase().includes(q))
-                    const current = visible.filter((m) => currentIds.has(m.id)).sort(sortByName)
-                    const others  = visible.filter((m) => !currentIds.has(m.id)).sort(sortByName)
-                    const isBaby  = (g: string) => (g ?? "").toLowerCase().includes("baby")
-                    const currentLabel = current[0] && isBaby(current[0].guild) ? "🧸 Floralis Baby" : "🦋 Floralis"
-                    const othersLabel  = others[0]  && isBaby(others[0].guild)  ? "🧸 Floralis Baby" : "🦋 Floralis"
-
-                    if (current.length === 0 && others.length === 0) {
-                      return (
-                        <div style={{ marginTop: 6, padding: "10px 12px", textAlign: "center", fontSize: 12, color: "#c4a8c4", fontStyle: "italic" }}>
-                          Nenhum nome encontrado
-                        </div>
-                      )
-                    }
-
-                    const renderGroup = (label: string, list: Member[]) => (
-                      <div key={label}>
-                        <p style={{ fontSize: 10, fontWeight: 800, color: "#b89ab8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "8px 0 4px", padding: "0 4px" }}>
-                          {label}
-                        </p>
-                        {list.map((m) => (
-                          <button
-                            key={m.id}
-                            onClick={() => { setSelected(m); setMemberSearch("") }}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 8,
-                              width: "100%", textAlign: "left",
-                              background: "white", border: "1px solid #f5eef8",
-                              borderRadius: 10, padding: "8px 10px",
-                              fontSize: 13, fontWeight: 600, color: "#3a2a3a",
-                              cursor: "pointer", marginBottom: 4,
-                            }}
-                          >
-                            {m.avatar
-                              ? <img src={m.avatar} alt={m.name} style={{ width: 26, height: 26, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
-                              : <div style={{ width: 26, height: 26, borderRadius: 8, background: "#FFF0F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, flexShrink: 0 }}>🌸</div>
-                            }
-                            {m.name}
-                          </button>
-                        ))}
-                      </div>
-                    )
-
-                    return (
-                      <div style={{ marginTop: 6, maxHeight: 180, overflowY: "auto" }}>
-                        {current.length > 0 && renderGroup(currentLabel, current)}
-                        {others.length > 0 && renderGroup(othersLabel, others)}
-                      </div>
-                    )
-                  })()}
-                </>
-              )}
-              {error && <p style={{ fontSize: 11, color: "#c0304a", margin: "8px 0 0" }}>{error}</p>}
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {error && <p style={{ fontSize: 11, color: "#c0304a", margin: "0 0 8px" }}>{error}</p>}
+              <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={handleSend} disabled={!selected || loading}
+                  onClick={handleConfirm} disabled={loading}
                   style={{
                     flex: 1,
-                    background: selected && !loading ? "linear-gradient(135deg, #d4608a, #9B4FD4)" : "#e2e8f0",
+                    background: !loading ? "linear-gradient(135deg, #d4608a, #9B4FD4)" : "#e2e8f0",
                     border: "none", borderRadius: 10, padding: "11px 14px",
                     fontSize: 13, fontWeight: 800,
-                    color: selected && !loading ? "white" : "#94a3b8",
-                    cursor: selected && !loading ? "pointer" : "not-allowed",
+                    color: !loading ? "white" : "#94a3b8",
+                    cursor: !loading ? "pointer" : "not-allowed",
                   }}
                 >{loading ? "Enviando..." : "Confirmar"}</button>
                 <button
-                  onClick={() => { setOpen(false); setSelected(null); setError(""); setMemberSearch("") }}
+                  onClick={() => { setOpen(false); setError("") }}
                   style={{ background: "#f5eef8", border: "none", borderRadius: 10, padding: "11px 14px", fontSize: 13, color: "#b89ab8", cursor: "pointer", fontWeight: 700 }}
                 >Cancelar</button>
               </div>
               <p style={{ fontSize: 10, color: "#c4a8c4", margin: "8px 0 0" }}>
-                A solicitação vai direto para o Notion e a admin será notificada 🌸
+                A atualização vai direto para o Notion 🌸
               </p>
             </>
           )}
@@ -224,8 +159,7 @@ function ReportButton({ flower, members, currentGuildMembers }: { flower: Flower
   )
 }
 
-export default function FlowerModal({ flower, members, allMembers, onClose }: Props) {
-  const reportMembers = allMembers ?? members
+export default function FlowerModal({ flower, members, onClose, onFlowerOwned }: Props) {
   const [tab, setTab]           = useState<ModalTab>("info")
   const [isMobile, setIsMobile] = useState(false)
   const rarity     = rarityConfig[flower.rarity as keyof typeof rarityConfig]
@@ -440,7 +374,7 @@ export default function FlowerModal({ flower, members, allMembers, onClose }: Pr
                 </div>
               )}
 
-              <ReportButton flower={flower} members={reportMembers} currentGuildMembers={members} />
+              <ReportButton flower={flower} onFlowerOwned={onFlowerOwned} />
             </div>
           )}
 
@@ -471,7 +405,7 @@ export default function FlowerModal({ flower, members, allMembers, onClose }: Pr
                 </div>
               ))}
               <div style={{ marginTop: 4 }}>
-                <ReportButton flower={flower} members={reportMembers} currentGuildMembers={members} />
+                <ReportButton flower={flower} onFlowerOwned={onFlowerOwned} />
               </div>
             </div>
           )}

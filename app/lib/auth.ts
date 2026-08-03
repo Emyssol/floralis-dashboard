@@ -1,4 +1,5 @@
-import NextAuth from "next-auth"
+import NextAuth, { type Session, type User } from "next-auth"
+import type { JWT } from "next-auth/jwt"
 import Google from "next-auth/providers/google"
 import { notion } from "@/app/lib/notion"
 
@@ -17,7 +18,7 @@ async function getFloristaByEmail(email: string): Promise<FloristaAuth | null> {
   const res = await notion.databases.query({
     database_id: FLORISTAS_DB,
     filter: {
-      property: "📧 Email",
+      property: "Email",
       email: { equals: email.trim().toLowerCase() },
     },
   })
@@ -35,20 +36,20 @@ async function getFloristaByEmail(email: string): Promise<FloristaAuth | null> {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [Google],
+  trustHost: true,
   pages: {
-    // Se quiser uma tela de login customizada depois, aponta aqui.
-    // Por enquanto usa a tela padrão do NextAuth.
+    signIn: "/login",
   },
   callbacks: {
     // Só deixa entrar quem tem e-mail cadastrado como florista no Notion
-    async signIn({ user }) {
+    async signIn({ user }: { user: User }) {
       if (!user.email) return false
       const florista = await getFloristaByEmail(user.email)
       return !!florista
     },
 
     // Enriquece o token com os dados da florista (feito 1x no login, fica no cookie)
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: JWT; user?: User }) {
       if (user?.email) {
         const florista = await getFloristaByEmail(user.email)
         if (florista) {
@@ -62,7 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
 
     // Repassa os dados do token pra sessão, disponível em toda a aplicação
-    async session({ session, token }) {
+    async session({ session, token }: { session: Session; token: JWT }) {
       if (session.user) {
         session.user.id = token.floristaId as string
         session.user.cargo = token.cargo as string

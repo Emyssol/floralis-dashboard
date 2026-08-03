@@ -26,6 +26,7 @@ import PopularesView from "@/app/components/PopularesView"
 
 import type { Flower, Member } from "@/app/lib/types"
 import Divider from "@/app/components/Divider"
+import { LoginButton } from "@/app/components/LoginButton"
 
 export type StatModalType =
   | "flores" | "floristas" | "ur" | "ssr"
@@ -60,9 +61,10 @@ const fullPageMeta: Record<NonNullable<FullPage>, { icon: string; label: string 
 interface DashboardProps {
   flowers: Flower[]
   members: Member[]
+  onFlowerOwned?: (flowerId: string, floristaId: string) => void
 }
 
-export default function Dashboard({ flowers, members }: DashboardProps) {
+export default function Dashboard({ flowers, members, onFlowerOwned }: DashboardProps) {
   const [fullPage, setFullPage]             = useState<FullPage>(null)
   const [search, setSearch]                 = useState("")
   const [selectedRarity, setSelectedRarity] = useState("ALL")
@@ -70,6 +72,12 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
   const [selectedFlower, setSelectedFlower] = useState<Flower | null>(null)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [statModal, setStatModal]           = useState<StatModalType>(null)
+
+  // Sempre pega a versão mais atual da flor (reflete atualização otimista de "Quem tem")
+  const liveSelectedFlower = useMemo(() => {
+    if (!selectedFlower) return null
+    return flowers.find((f) => f.id === selectedFlower.id) ?? selectedFlower
+  }, [selectedFlower, flowers])
 
   // ── Membros filtrados por guilda ──
   const floralisMembers = useMemo(() => members.filter(isFloralis), [members])
@@ -144,8 +152,8 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
   const modals = (
     <>
       <AnimatePresence>
-        {selectedFlower && (
-          <FlowerModal key="flower-modal" flower={selectedFlower} members={flowerModalMembers} allMembers={members} onClose={() => setSelectedFlower(null)} />
+        {liveSelectedFlower && (
+          <FlowerModal key="flower-modal" flower={liveSelectedFlower} members={flowerModalMembers} allMembers={members} onClose={() => setSelectedFlower(null)} onFlowerOwned={onFlowerOwned} />
         )}
       </AnimatePresence>
       <AnimatePresence>
@@ -323,6 +331,7 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
           </motion.div>
         </div>
         {modals}
+        <LoginButton />
         <style>{styles}</style>
       </>
     )
@@ -452,6 +461,7 @@ export default function Dashboard({ flowers, members }: DashboardProps) {
         </div>
       </div>
       {modals}
+      <LoginButton />
       <style>{styles}</style>
     </>
   )

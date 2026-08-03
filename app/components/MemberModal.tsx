@@ -50,6 +50,14 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
   const [sentMode, setSentMode]       = useState<"auto" | "pending">("pending")
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState("")
+  const [idCopied, setIdCopied]       = useState(false)
+
+  function handleCopyId() {
+    if (!member.gameId) return
+    navigator.clipboard.writeText(String(member.gameId))
+    setIdCopied(true)
+    setTimeout(() => setIdCopied(false), 1500)
+  }
 
   function toggleFlower(name: string) {
     setSelected((prev) => {
@@ -171,6 +179,31 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                     </span>
                   )
                 })()}
+                {/* ID de jogador — clique pra copiar */}
+                {member.gameId != null && (
+                  <button
+                    onClick={handleCopyId}
+                    title="Copiar ID do jogador"
+                    style={{
+                      background: idCopied ? "rgba(92,184,122,0.18)" : "rgba(200,160,190,0.12)",
+                      color: idCopied ? "#4a8a5a" : "#85667F",
+                      border: `1px solid ${idCopied ? "rgba(92,184,122,0.35)" : "rgba(200,160,190,0.22)"}`,
+                      borderRadius: 999, padding: "2px 9px", fontSize: 10, fontWeight: 700,
+                      display: "inline-flex", alignItems: "center", gap: 4,
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    {idCopied ? "✓ Copiado!" : (
+                      <>
+                        🆔 {member.gameId}
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2"/>
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>
