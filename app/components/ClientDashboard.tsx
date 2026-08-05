@@ -109,11 +109,12 @@ export default function ClientDashboard({ initialFlowers, initialMembers, onReva
     )
   }
 
-  async function load() {
+  async function load(forceRefresh = false) {
     setLoading(true)
     setError("")
     try {
-      const res = await fetch("/api/dashboard", { cache: "no-store" })
+      const url = forceRefresh ? "/api/dashboard?refresh=1" : "/api/dashboard"
+      const res = await fetch(url, { cache: "no-store" })
       if (!res.ok) throw new Error(`Erro ${res.status}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -131,10 +132,10 @@ export default function ClientDashboard({ initialFlowers, initialMembers, onReva
     if (onRevalidate) {
       startTransition(async () => {
         await onRevalidate()
-        await load()
+        await load(true)
       })
     } else {
-      load()
+      load(true)
     }
   }
 

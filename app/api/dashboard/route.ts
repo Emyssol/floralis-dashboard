@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getDashboardData } from "@/app/lib/getDashboardData"
 
 let cache: { data: any; ts: number } | null = null
-const CACHE_TTL = 60 * 1000
+const CACHE_TTL = 5 * 60 * 1000 // 5 min — o botão de atualizar manual força um refresh quando precisar
 
 export async function GET(request: Request) {
   const forceRefresh = new URL(request.url).searchParams.get("refresh") === "1"

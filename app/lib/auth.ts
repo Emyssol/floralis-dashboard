@@ -13,25 +13,38 @@ type FloristaAuth = {
   guild: string
 }
 
+// Cache em memória de curtíssima duração — evita consultar o Notion 2x pelo
+// mesmo e-mail no mesmo login (signIn e jwt chamam getFloristaByEmail em sequência).
+const floristaCache = new Map<string, { data: FloristaAuth | null; ts: number }>()
+const FLORISTA_CACHE_TTL = 10_000 // 10s — só pra evitar consultar 2x no mesmo login
+
 // Busca a florista no Notion cujo "📧 Email" bate com o e-mail do login Google
 async function getFloristaByEmail(email: string): Promise<FloristaAuth | null> {
+  const key = email.trim().toLowerCase()
+
+  const cached = floristaCache.get(key)
+  if (cached && Date.now() - cached.ts < FLORISTA_CACHE_TTL) {
+    return cached.data
+  }
+
   const res = await notion.databases.query({
     database_id: FLORISTAS_DB,
     filter: {
       property: "Email",
-      email: { equals: email.trim().toLowerCase() },
+      email: { equals: key },
     },
   })
 
   const page = res.results[0] as any
-  if (!page) return null
-
-  return {
+  const florista: FloristaAuth | null = !page ? null : {
     id:    page.id,
     name:  page.properties["🎮 Nick do jogo"]?.title?.[0]?.plain_text ?? "Florista",
     cargo: page.properties["🏷️ Cargo"]?.select?.name ?? "Membro",
     guild: page.properties["🎖️ Guilda"]?.select?.name ?? "🦋 Floralis",
   }
+
+  floristaCache.set(key, { data: florista, ts: Date.now() })
+  return florista
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({

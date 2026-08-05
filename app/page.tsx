@@ -1,11 +1,7 @@
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import ClientDashboard from "@/app/components/ClientDashboard"
-import { getDashboardData } from "@/app/lib/getDashboardData"
 import { auth } from "@/app/lib/auth"
-
-// Revalida a cada 60s no Vercel (não afeta dev local)
-export const revalidate = 60
 
 async function revalidateData() {
   "use server"
@@ -18,17 +14,8 @@ export default async function Home() {
     redirect("/login")
   }
 
-  try {
-    const data = await getDashboardData()
-    return (
-      <ClientDashboard
-        initialFlowers={data.flowers}
-        initialMembers={data.members}
-        onRevalidate={revalidateData}
-      />
-    )
-  } catch {
-    // Fallback: ClientDashboard busca client-side
-    return <ClientDashboard />
-  }
+  // Não busca dados aqui — deixa o ClientDashboard buscar do lado do
+  // navegador, assim a tela de carregamento (logo + barra de progresso)
+  // aparece na hora, em vez da página ficar em branco esperando o Notion.
+  return <ClientDashboard onRevalidate={revalidateData} />
 }

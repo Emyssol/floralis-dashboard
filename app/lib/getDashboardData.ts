@@ -1,12 +1,11 @@
 import { notion } from "@/app/lib/notion"
 import type { Flower, Member } from "@/app/lib/types"
 
-const PROP_FLORES_QUE_TEM    = "py%3DC"
 const PROP_FLORES_COMPETICAO = "J%5EvN"
 
 // ── Cache em memória ──
 let cache: { flowers: Flower[]; members: Member[]; ts: number } | null = null
-const CACHE_TTL = 60 * 1000
+const CACHE_TTL = 5 * 60 * 1000 // 5 min — o botão de atualizar manual força um refresh quando precisar
 
 async function queryAll(databaseId: string): Promise<any[]> {
   const results: any[] = []
@@ -74,36 +73,51 @@ export async function getDashboardData(forceRefresh = false): Promise<{ flowers:
     throw new Error("Erro ao buscar dados do Notion")
   }
 
-  const flowerById: Record<string, string> = {}
+  // Índice reverso: florista_id -> nomes das flores que ela tem.
+  // Montado a partir da relation "👑 Quem tem" de cada FLOR (que já
+  // estamos buscando de qualquer jeito), em vez de perguntar de novo
+  // pra cada FLORISTA — corta pela metade as chamadas extras ao Notion.
+  const ownersByFlorista: Record<string, string[]> = {}
 
-  const flowers: Flower[] = flowersRes.value.map((page: any) => {
-    const f = {
-      id:       page.id,
-      name:     page.properties["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa",
-      rarity:   page.properties["💗 Raridade"]?.select?.name || "💚 N",
-      origin:   page.properties["🛒 Origem"]?.select?.name || "Desconhecida",
-      points:   page.properties["⭐ Pontuação Base"]?.number || 0,
-      diamonds: page.properties["💎 Diamantes para Dobrar"]?.number || 0,
-      owners:   page.properties["👑 Quem tem"]?.relation?.length || 0,
-      image:
-        page.properties["🖼️ Foto da Flor"]?.files?.[0]?.file?.url ||
-        page.properties["🖼️ Foto da Flor"]?.files?.[0]?.external?.url ||
-        page.cover?.file?.url ||
-        page.cover?.external?.url ||
-        null,
+  const flowers: Flower[] = await processInBatches(flowersRes.value, 10, async (page: any) => {
+      const name = page.properties["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa"
+
+      const quemTemProp = page.properties["👑 Quem tem"]
+      const ownerIds: string[] = quemTemProp?.has_more
+        ? await getFullRelation(page.id, quemTemProp.id)
+        : (quemTemProp?.relation?.map((r: any) => r.id) ?? [])
+
+      for (const ownerId of ownerIds) {
+        if (!ownersByFlorista[ownerId]) ownersByFlorista[ownerId] = []
+        ownersByFlorista[ownerId].push(name)
+      }
+
+      return {
+        id:       page.id,
+        name,
+        rarity:   page.properties["💗 Raridade"]?.select?.name || "💚 N",
+        origin:   page.properties["🛒 Origem"]?.select?.name || "Desconhecida",
+        points:   page.properties["⭐ Pontuação Base"]?.number || 0,
+        diamonds: page.properties["💎 Diamantes para Dobrar"]?.number || 0,
+        owners:   ownerIds.length,
+        image:
+          page.properties["🖼️ Foto da Flor"]?.files?.[0]?.file?.url ||
+          page.properties["🖼️ Foto da Flor"]?.files?.[0]?.external?.url ||
+          page.cover?.file?.url ||
+          page.cover?.external?.url ||
+          null,
+      }
     }
-    flowerById[f.id] = f.name
-    return f
-  })
+  )
+
+  const flowerById: Record<string, string> = {}
+  for (const f of flowers) flowerById[f.id] = f.name
 
   const stripEmoji = (str: string) =>
     str.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "").trim() || str
 
   const members: Member[] = await processInBatches(membersRes.value, 10, async (member: any) => {
-    const [flowerIds, favoriteIds] = await Promise.all([
-      resolveRelation(member, "🌸 Flores que tem",          PROP_FLORES_QUE_TEM),
-      resolveRelation(member, "🎖️ Flores para Competição", PROP_FLORES_COMPETICAO),
-    ])
+    const favoriteIds = await resolveRelation(member, "🎖️ Flores para Competição", PROP_FLORES_COMPETICAO)
 
     const statusRaw =
       member.properties["⚔️ Status na competição"]?.select?.name ||
@@ -147,7 +161,7 @@ export async function getDashboardData(forceRefresh = false): Promise<{ flowers:
         null,
       bio:       member.properties["📝 Bio"]?.rich_text?.[0]?.plain_text || "",
       gameId:    member.properties["ID de Jogador (a)"]?.number ?? null,
-      flowers:   flowerIds.map((id) => flowerById[id]).filter(Boolean),
+      flowers:   ownersByFlorista[member.id] ?? [],
       favorites: favoriteIds.map((id) => flowerById[id]).filter(Boolean),
     }
   })

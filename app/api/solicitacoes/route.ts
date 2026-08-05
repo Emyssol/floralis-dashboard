@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
+import { auth } from "@/app/lib/auth"
 import { notion } from "@/app/lib/notion"
+import { CARGOS_ADMIN } from "@/app/lib/permissoes"
 
 const SOLICITACOES_DB = process.env.NOTION_SOLICITACOES_DB!
 
 // ── POST — criar nova solicitação ──
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+    }
+
     const body = await request.json()
     const { tipo, florista_id, flores_ids, florista_nome, flores_nomes } = body
 
@@ -20,6 +27,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Campos obrigatórios: tipo, florista_id" },
         { status: 400 }
+      )
+    }
+
+    // Só pode criar solicitação em nome da própria florista — a não ser que seja admin
+    const isSelf  = session.user.id === florista_id
+    const isAdmin = CARGOS_ADMIN.includes(session.user.cargo)
+    if (!isSelf && !isAdmin) {
+      return NextResponse.json(
+        { error: "Sem permissão para criar solicitação em nome dessa florista" },
+        { status: 403 }
       )
     }
 
@@ -75,7 +92,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("[API Solicitações] Erro ao criar:", error?.message)
     return NextResponse.json(
-      { error: error?.message ?? "Erro interno" },
+      { error: "Erro interno ao criar solicitação" },
       { status: 500 }
     )
   }
@@ -84,6 +101,17 @@ export async function POST(request: NextRequest) {
 // ── GET — buscar solicitações pendentes (badge de admin) ──
 export async function GET() {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+    }
+    if (!CARGOS_ADMIN.includes(session.user.cargo)) {
+      return NextResponse.json(
+        { error: "Apenas admins podem ver as solicitações pendentes" },
+        { status: 403 }
+      )
+    }
+
     const res = await notion.databases.query({
       database_id: SOLICITACOES_DB,
       filter: {
@@ -106,13 +134,28 @@ export async function GET() {
     return NextResponse.json({ count: solicitacoes.length, solicitacoes })
 
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message }, { status: 500 })
+    console.error("[API Solicitações] Erro ao buscar:", error?.message)
+    return NextResponse.json(
+      { error: "Erro interno ao buscar solicitações" },
+      { status: 500 }
+    )
   }
 }
 
 // ── PATCH — atualizar status (admin marca como concluído) ──
 export async function PATCH(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+    }
+    if (!CARGOS_ADMIN.includes(session.user.cargo)) {
+      return NextResponse.json(
+        { error: "Apenas admins podem atualizar o status de solicitações" },
+        { status: 403 }
+      )
+    }
+
     const { id, status } = await request.json()
     if (!id || !status) {
       return NextResponse.json({ error: "id e status obrigatórios" }, { status: 400 })
@@ -128,6 +171,10 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true, id, status })
 
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message }, { status: 500 })
+    console.error("[API Solicitações] Erro ao atualizar:", error?.message)
+    return NextResponse.json(
+      { error: "Erro interno ao atualizar solicitação" },
+      { status: 500 }
+    )
   }
 }

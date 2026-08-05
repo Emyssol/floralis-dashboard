@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/app/lib/auth"
 import { notion } from "@/app/lib/notion"
+import { CARGOS_ADMIN } from "@/app/lib/permissoes"
 
 // Mesmo nome de propriedade usado em getDashboardData.ts
 const PROP_QUEM_TEM = "👑 Quem tem"
-const CARGOS_ADMIN = ["Líder", "Co-líder", "Ancião"]
 
 // Lê a relation inteira quando ela é grande demais para vir na página normal
 // (mesmo padrão de paginação já usado em getDashboardData.ts → getFullRelation)

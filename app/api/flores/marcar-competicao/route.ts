@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/app/lib/auth"
 import { notion } from "@/app/lib/notion"
+import { CARGOS_ADMIN } from "@/app/lib/permissoes"
 
 // Mesmo nome de propriedade usado em getDashboardData.ts
 const PROP_COMPETICAO = "🎖️ Flores para Competição"
-const CARGOS_ADMIN = ["Líder", "Co-líder", "Ancião"]
 
 // ── POST — substitui a seleção semanal de flores para competição ──
 // Diferente da posse: aqui a lista é SUBSTITUÍDA inteira (não acrescentada),
