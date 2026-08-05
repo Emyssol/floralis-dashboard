@@ -69,7 +69,7 @@ export default function RareView({ flowers, onSelect }: Props) {
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
               {spotlight.image
-                ? <img src={spotlight.image} alt={spotlight.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ? <img src={spotlight.image} alt={spotlight.name} style={{ width: "clamp(72px,12vw,112px)", height: "clamp(72px,12vw,112px)", objectFit: "cover" }} />
                 : <span style={{ fontSize: 44 }}>🌸</span>
               }
             </div>

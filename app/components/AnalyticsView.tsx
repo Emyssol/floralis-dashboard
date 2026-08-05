@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { motion } from "framer-motion"
 import { rarityConfig } from "@/app/lib/rarity"
 import type { Flower, Member } from "@/app/lib/types"
@@ -164,50 +165,63 @@ function OriginFlowers({ flowers, origin, color, onSelectFlower }: {
 }
 
 export default function AnalyticsView({ flowers, members, onStatClick, onSelectFlower }: Props) {
-  const coletadas    = flowers.filter((f) => f.owners > 0).length
-  const naoColetadas = flowers.filter((f) => f.owners === 0).length
+  // Lookup O(1) por nome — evita flowers.find() dentro de loops
+  const flowerByName = useMemo(() => {
+    const map = new Map<string, Flower>()
+    for (const f of flowers) map.set(f.name, f)
+    return map
+  }, [flowers])
 
-  const raras = flowers.filter((f) => ["❤️ UR", "💛 SSR", "💜 SR"].includes(f.rarity))
-  const rarasColetadas = raras.filter((f) => f.owners > 0).length
-  const unicasCount = flowers.filter((f) => f.owners === 1).length
+  const coletadas    = useMemo(() => flowers.filter((f) => f.owners > 0).length, [flowers])
+  const naoColetadas = useMemo(() => flowers.filter((f) => f.owners === 0).length, [flowers])
 
-  const emMissaoMembers = members.filter((m) => m.status === "Em Missão")
-  const floresEmComp = new Set(emMissaoMembers.flatMap((m) => m.favorites))
+  const raras = useMemo(() => flowers.filter((f) => ["❤️ UR", "💛 SSR", "💜 SR"].includes(f.rarity)), [flowers])
+  const rarasColetadas = useMemo(() => raras.filter((f) => f.owners > 0).length, [raras])
+  const unicasCount = useMemo(() => flowers.filter((f) => f.owners === 1).length, [flowers])
 
-  const compByRarity = [
-    { label: "❤️ UR",  value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "❤️ UR").length,  color: "#c0304a", bg: "#fde8ef" },
-    { label: "💛 SSR", value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💛 SSR").length, color: "#b07010", bg: "#fef6e0" },
-    { label: "💜 SR",  value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💜 SR").length,  color: "#7040b0", bg: "#f0eafb" },
-    { label: "💙 R",   value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💙 R").length,   color: "#2060c0", bg: "#eff6ff" },
-    { label: "💚 N",   value: [...floresEmComp].filter((n) => flowers.find((f) => f.name === n)?.rarity === "💚 N").length,   color: "#15803d", bg: "#f0fdf4" },
-  ].filter((d) => d.value > 0)
+  const emMissaoMembers = useMemo(() => members.filter((m) => m.status === "Em Missão"), [members])
+  const floresEmComp = useMemo(() => new Set(emMissaoMembers.flatMap((m) => m.favorites)), [emMissaoMembers])
 
-  const statusData = [
+  const compByRarity = useMemo(() => [
+    { label: "❤️ UR",  value: [...floresEmComp].filter((n) => flowerByName.get(n)?.rarity === "❤️ UR").length,  color: "#c0304a", bg: "#fde8ef" },
+    { label: "💛 SSR", value: [...floresEmComp].filter((n) => flowerByName.get(n)?.rarity === "💛 SSR").length, color: "#b07010", bg: "#fef6e0" },
+    { label: "💜 SR",  value: [...floresEmComp].filter((n) => flowerByName.get(n)?.rarity === "💜 SR").length,  color: "#7040b0", bg: "#f0eafb" },
+    { label: "💙 R",   value: [...floresEmComp].filter((n) => flowerByName.get(n)?.rarity === "💙 R").length,   color: "#2060c0", bg: "#eff6ff" },
+    { label: "💚 N",   value: [...floresEmComp].filter((n) => flowerByName.get(n)?.rarity === "💚 N").length,   color: "#15803d", bg: "#f0fdf4" },
+  ].filter((d) => d.value > 0), [floresEmComp, flowerByName])
+
+  const statusData = useMemo(() => [
     { label: "Em Missão", value: members.filter((m) => m.status === "Em Missão").length, color: "#22c55e", bg: "#DCFCE7" },
     { label: "Concluiu",  value: members.filter((m) => m.status === "Concluiu").length,  color: "#60a5fa", bg: "#EFF6FF" },
     { label: "Pausada",   value: members.filter((m) => m.status === "Pausada").length,   color: "#f59e0b", bg: "#FEF3C7" },
     { label: "Fora",      value: members.filter((m) => m.status === "Fora").length,      color: "#94a3b8", bg: "#F1F5F9" },
-  ].filter((d) => d.value > 0)
+  ].filter((d) => d.value > 0), [members])
 
-  const progressItems = [
+  const progressItems = useMemo(() => [
     { label: "Flores coletadas",   value: coletadas,      total: flowers.length, color: "#34d399" },
     { label: "Flores Raras (SR+)", value: rarasColetadas, total: raras.length,   color: "#a78bfa" },
     { label: "Flores Únicas",      value: unicasCount,    total: flowers.length, color: "#d4608a" },
-  ]
+  ], [coletadas, rarasColetadas, unicasCount, raras, flowers])
 
-  const flowerMissionCount: Record<string, number> = {}
-  emMissaoMembers.forEach((m) => {
-    m.favorites.forEach((name) => {
-      flowerMissionCount[name] = (flowerMissionCount[name] ?? 0) + 1
+  const flowerMissionCount = useMemo(() => {
+    const counts: Record<string, number> = {}
+    emMissaoMembers.forEach((m) => {
+      m.favorites.forEach((name) => {
+        counts[name] = (counts[name] ?? 0) + 1
+      })
     })
-  })
+    return counts
+  }, [emMissaoMembers])
 
-  const topByMission = Object.entries(flowerMissionCount)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 10)
-    .map(([name, count]) => ({ flower: flowers.find((f) => f.name === name), name, count }))
+  const topByMission = useMemo(() =>
+    Object.entries(flowerMissionCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, count]) => ({ flower: flowerByName.get(name), name, count })),
+    [flowerMissionCount, flowerByName]
+  )
 
-  const visaoGeral: { icon: string; label: string; value: number; color: string; bg: string; modal: StatModalType }[] = [
+  const visaoGeral = useMemo((): { icon: string; label: string; value: number; color: string; bg: string; modal: StatModalType }[] => [
     { icon: "🌸", label: "Total de flores",        value: flowers.length,                                                       color: "#d4608a", bg: "#FFF0F5", modal: "flores"    },
     { icon: "✨", label: "Flores exclusivas",       value: unicasCount,                                                          color: "#8B5CF6", bg: "#F5F0FF", modal: "unicas"    },
     { icon: "🌿", label: "Ninguém tem",             value: naoColetadas,                                                         color: "#059669", bg: "#F0FDF4", modal: "sem_dono"  },
@@ -216,7 +230,7 @@ export default function AnalyticsView({ flowers, members, onStatClick, onSelectF
     { icon: "🔴", label: "Só 1 dona",              value: flowers.filter((f) => f.owners === 1).length,                        color: "#d4608a", bg: "#FFF0F5", modal: "unicas"    },
     { icon: "🟡", label: "Poucas donas (2-3)",     value: flowers.filter((f) => f.owners >= 2 && f.owners <= 3).length,        color: "#b07010", bg: "#fef6e0", modal: "flores"    },
     { icon: "🟢", label: "Muitas donas (4+)",      value: flowers.filter((f) => f.owners >= 4).length,                         color: "#15803d", bg: "#f0fdf4", modal: "flores"    },
-  ]
+  ], [flowers, unicasCount, naoColetadas])
 
   return (
     <>

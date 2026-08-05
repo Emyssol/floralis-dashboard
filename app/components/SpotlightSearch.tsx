@@ -65,7 +65,7 @@ export default function SpotlightSearch({ flowers, members, onSelect, onSelectMe
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {flower.image
-                  ? <img src={flower.image} alt={flower.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ? <img src={flower.image} alt={flower.name} style={{ width: 64, height: 64, objectFit: "cover" }} />
                   : <span style={{ fontSize: 30 }}>🌸</span>
                 }
               </div>

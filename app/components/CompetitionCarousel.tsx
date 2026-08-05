@@ -70,7 +70,7 @@ export default function CompetitionCarousel({ flowers, members, onSelect }: Prop
               {/* Imagem */}
               <div style={{ height:96,position:"relative",background:cfg?.bg??"#FFF5F8",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden" }}>
                 {flower.image
-                  ? <img src={flower.image} alt={name} style={{ width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 20%" }} />
+                  ? <img src={flower.image} alt={name} style={{ width:"100%",height:96,objectFit:"cover",objectPosition:"center 20%" }} />
                   : <span style={{ fontSize:36,opacity:0.45 }}>🌸</span>
                 }
                 <div style={{ position:"absolute",inset:0,background:"linear-gradient(to bottom,transparent 55%,rgba(30,10,30,0.14))" }} />

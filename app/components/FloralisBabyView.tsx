@@ -174,7 +174,7 @@ export default function FloralisBabyView({ flowers, members, onSelectMember, onS
                   background: "linear-gradient(135deg, #edfff3, #f0faff)", overflow: "hidden",
                 }}>
                   {member.avatar ? (
-                    <img src={member.avatar} alt={member.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={member.avatar} alt={member.name} style={{ width: "100%", height: 90, objectFit: "cover" }} />
                   ) : (
                     <div style={{
                       width: 52, height: 52, borderRadius: "50%",

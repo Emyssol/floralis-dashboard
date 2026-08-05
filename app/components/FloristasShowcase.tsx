@@ -186,7 +186,7 @@ export default function FloristasShowcase({ members, onViewAll, onSelectMember }
                   <img
                     src={member.avatar}
                     alt={member.name}
-                    style={{ width:"100%", height:"100%", objectFit:"cover" }}
+                    style={{ width:"100%", height:90, objectFit:"cover" }}
                   />
                 ) : (
                   /* SE não existir: círculo de iniciais centralizado */

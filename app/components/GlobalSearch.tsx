@@ -113,7 +113,7 @@ function FlowerMini({ flower, members, onClick }: { flower: Flower; members: Mem
     >
       <div style={{ width: 40, height: 40, borderRadius: 10, flexShrink: 0, overflow: "hidden", background: "rgba(255,255,255,0.5)" }}>
         {flower.image
-          ? <img src={flower.image} alt={flower.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          ? <img src={flower.image} alt={flower.name} style={{ width: 40, height: 40, objectFit: "cover" }} />
           : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🌸</div>
         }
       </div>

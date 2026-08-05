@@ -44,7 +44,7 @@ export default function FlowerCard({ flower, members=[], totalMembers=1, onClick
         overflow: "hidden", flexShrink: 0, position: "relative",
       }}>
         {flower.image
-          ? <img src={flower.image} alt={flower.name} style={{ width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 30%" }} />
+          ? <img src={flower.image} alt={flower.name} style={{ width:"100%",height:110,objectFit:"cover",objectPosition:"center 30%" }} />
           : <span style={{ fontSize:40,opacity:0.55 }}>🌸</span>
         }
       </div>

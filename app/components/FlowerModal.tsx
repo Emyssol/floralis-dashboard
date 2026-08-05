@@ -218,7 +218,7 @@ export default function FlowerModal({ flower, members, onClose, onFlowerOwned }:
       <div style={{ position: "relative", height: isMobile ? 180 : 240, flexShrink: 0, overflow: "hidden" }}>
         {flower.image ? (
           <img src={flower.image} alt={flower.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center 30%" }} />
+            style={{ width: "100%", height: isMobile ? 180 : 240, objectFit: "cover", objectPosition: "center 30%" }} />
         ) : (
           <div style={{
             height: "100%", display: "flex", alignItems: "center", justifyContent: "center",
