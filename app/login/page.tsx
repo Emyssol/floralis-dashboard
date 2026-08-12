@@ -1,10 +1,9 @@
 "use client"
 
-import { Quicksand, Caveat } from "next/font/google"
+import { Quicksand } from "next/font/google"
 import { signIn } from "next-auth/react"
 
 const quicksand = Quicksand({ subsets: ["latin"], weight: ["400", "500", "600", "700"] })
-const caveat = Caveat({ subsets: ["latin"], weight: ["500", "600"] })
 
 const features = [
   { icon: "🛡️", title: "Seguro e privado", desc: "Seus dados são protegidos pelo Google." },
@@ -126,7 +125,7 @@ export default function LoginPage() {
           ))}
         </div>
 
-        <p className={caveat.className} style={{ fontSize: 21, color: "#D48FB0", marginTop: 28, marginBottom: 0 }}>
+        <p style={{ fontFamily: "'Segoe Script', 'Bradley Hand', 'Brush Script MT', cursive", fontSize: 22, color: "#D48FB0", marginTop: 28, marginBottom: 0 }}>
           Cultive • Conecte • Floresça
         </p>
       </div>
