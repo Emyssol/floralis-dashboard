@@ -34,6 +34,63 @@ function initials(name: string) {
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
+function isBabyMember(m: Member): boolean {
+  return (m.guild ?? "").toLowerCase().includes("baby")
+}
+
+function groupByGuild(list: Member[]) {
+  const sortByName = (a: Member, b: Member) => a.name.localeCompare(b.name, "pt-BR")
+  return {
+    floralis: list.filter((m) => !isBabyMember(m)).sort(sortByName),
+    baby:     list.filter((m) =>  isBabyMember(m)).sort(sortByName),
+  }
+}
+
+function OwnerChip({ m, flowerName }: { m: Member; flowerName: string }) {
+  const isFav = m.favorites.includes(flowerName)
+  const baby  = isBabyMember(m)
+  const bg     = baby ? "#F0FDF4" : "#FFF0F5"
+  const border = baby ? "#bbf7d0" : "#f9c8dc"
+  const color  = baby ? "#4a8a5a" : "#C8849E"
+  return (
+    <span style={{
+      background: bg,
+      color,
+      border: `1px solid ${border}`,
+      borderRadius: 999, padding: "4px 10px",
+      fontSize: 12, fontWeight: 700,
+      display: "inline-flex", alignItems: "center", gap: 4,
+    }}>
+      {m.avatar
+        ? <img src={m.avatar} alt={m.name} style={{ width: 16, height: 16, borderRadius: "50%", objectFit: "cover" }} />
+        : <span style={{ width: 16, height: 16, borderRadius: "50%", background: border, fontSize: 8, fontWeight: 900, color, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{initials(m.name)}</span>
+      }
+      {m.name}
+      {isFav && <span title="Preferida para competição">🏆</span>}
+    </span>
+  )
+}
+
+function OwnerRow({ m, flowerName }: { m: Member; flowerName: string }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12,
+      background: "#FFF9F2", border: "1px solid #f5eef8",
+      borderRadius: 14, padding: "11px 14px",
+    }}>
+      {m.avatar
+        ? <img src={m.avatar} alt={m.name} style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
+        : <div style={{ width: 38, height: 38, borderRadius: 10, background: "#FFF0F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🌸</div>
+      }
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontWeight: 800, color: "#3a2a3a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "#c4a8c4", margin: 0 }}>{m.cargo}</p>
+      </div>
+      {m.favorites.includes(flowerName) && <span style={{ fontSize: 15 }}>🏆</span>}
+    </div>
+  )
+}
+
 function ReportButton({ flower, onFlowerOwned }: { flower: Flower; onFlowerOwned?: (flowerId: string, floristaId: string) => void }) {
   const { data: session } = useSession()
   const florista = session?.user
@@ -159,16 +216,21 @@ function ReportButton({ flower, onFlowerOwned }: { flower: Flower; onFlowerOwned
   )
 }
 
-export default function FlowerModal({ flower, members, onClose, onFlowerOwned }: Props) {
+export default function FlowerModal({ flower, members, allMembers, onClose, onFlowerOwned }: Props) {
   const [tab, setTab]           = useState<ModalTab>("info")
   const [isMobile, setIsMobile] = useState(false)
   const rarity     = rarityConfig[flower.rarity as keyof typeof rarityConfig]
-  const owners     = members.filter((m) => m.flowers.includes(flower.name))
-  const favorites  = members.filter((m) => m.favorites.includes(flower.name))
+  // Sempre cruza as DUAS guildas (Floralis + Floralis Baby) — allMembers já vem
+  // com a lista completa; members fica só como fallback de compatibilidade.
+  const familyMembers = allMembers ?? members
+  const owners     = familyMembers.filter((m) => m.flowers.includes(flower.name))
+  const favorites  = familyMembers.filter((m) => m.favorites.includes(flower.name))
   const ownerLabel = ownershipLabel(flower.owners)
   const rarityIndex = rarityOrder.indexOf(flower.rarity)
   const rarityStars = Math.max(1, 5 - rarityIndex)
-  const popularity  = members.length > 0 ? flower.owners / members.length : 0
+  const popularity  = familyMembers.length > 0 ? flower.owners / familyMembers.length : 0
+  const ownersGrouped    = groupByGuild(owners)
+  const favoritesGrouped = groupByGuild(favorites)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640)
@@ -315,53 +377,62 @@ export default function FlowerModal({ flower, members, onClose, onFlowerOwned }:
 
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "#b89ab8" }}>Popularidade na guilda</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#b89ab8" }}>Popularidade na Família Floralis</span>
                   <span style={{ fontSize: 11, fontWeight: 800, color: ownerLabel.color }}>{ownerLabel.label}</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 999, background: "#f0e8ee", overflow: "hidden" }}>
                   <div style={{ height: "100%", borderRadius: 999, width: `${Math.round(popularity * 100)}%`, background: rarity?.color ?? "#d4608a", transition: "width 0.6s ease" }} />
                 </div>
                 <p style={{ fontSize: 11, color: "#c4a8c4", marginTop: 4 }}>
-                  {flower.owners} de {members.length} floristas ({Math.round(popularity * 100)}%)
+                  {flower.owners} de {familyMembers.length} floristas ({Math.round(popularity * 100)}%)
                 </p>
               </div>
 
               {owners.length > 0 && (
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 800, color: "#3a2a3a", marginBottom: 8 }}>✅ Quem tem esta flor</p>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {owners.map((m) => {
-                      const isFav = m.favorites.includes(flower.name)
-                      return (
-                        <span key={m.id} style={{
-                          background: isFav ? "#FFF0F5" : "#F0FDF4",
-                          color: isFav ? "#d4608a" : "#15803d",
-                          border: `1px solid ${isFav ? "#f9c8dc" : "#86efac"}`,
-                          borderRadius: 999, padding: "4px 10px",
-                          fontSize: 12, fontWeight: 700,
-                          display: "inline-flex", alignItems: "center", gap: 4,
-                        }}>
-                          {m.avatar
-                            ? <img src={m.avatar} alt={m.name} style={{ width: 16, height: 16, borderRadius: "50%", objectFit: "cover" }} />
-                            : <span style={{ width: 16, height: 16, borderRadius: "50%", background: isFav ? "#f9c8dc" : "#bbf7d0", fontSize: 8, fontWeight: 900, color: isFav ? "#d4608a" : "#15803d", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{initials(m.name)}</span>
-                          }
-                          {m.name}
-                          {isFav && <span>💎</span>}
-                        </span>
-                      )
-                    })}
-                  </div>
+                  {ownersGrouped.floralis.length > 0 && (
+                    <div style={{ marginBottom: ownersGrouped.baby.length > 0 ? 10 : 0 }}>
+                      <p style={{ fontSize: 10, fontWeight: 800, color: "#C8849E", textTransform: "uppercase", letterSpacing: "0.04em", margin: "0 0 6px" }}>
+                        🦋 Floralis · {ownersGrouped.floralis.length}
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {ownersGrouped.floralis.map((m) => <OwnerChip key={m.id} m={m} flowerName={flower.name} />)}
+                      </div>
+                    </div>
+                  )}
+                  {ownersGrouped.baby.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 10, fontWeight: 800, color: "#4a8a5a", textTransform: "uppercase", letterSpacing: "0.04em", margin: "0 0 6px" }}>
+                        🧸 Floralis Baby · {ownersGrouped.baby.length}
+                      </p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {ownersGrouped.baby.map((m) => <OwnerChip key={m.id} m={m} flowerName={flower.name} />)}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
               {favorites.length > 0 && (
                 <div style={{ background: "#FFF8E8", border: "1px solid #FDE68A", borderRadius: 14, padding: "12px 14px" }}>
-                  <p style={{ fontSize: 11, fontWeight: 800, color: "#b07010", margin: "0 0 4px" }}>
-                    💎 Flor preferida de {favorites.length} florista{favorites.length > 1 ? "s" : ""}
+                  <p style={{ fontSize: 11, fontWeight: 800, color: "#b07010", margin: "0 0 10px" }}>
+                    🏆 Preferida para competição · {favorites.length} florista{favorites.length > 1 ? "s" : ""}
                   </p>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e", margin: 0 }}>
-                    {favorites.map((m) => m.name).join(" · ")}
-                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div>
+                      <p style={{ fontSize: 10, fontWeight: 800, color: "#b07010", margin: "0 0 3px" }}>🦋 Floralis · {favoritesGrouped.floralis.length}</p>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e", margin: 0 }}>
+                        {favoritesGrouped.floralis.length > 0 ? favoritesGrouped.floralis.map((m) => m.name).join(" · ") : "Nenhuma no momento"}
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 10, fontWeight: 800, color: "#b07010", margin: "0 0 3px" }}>🧸 Floralis Baby · {favoritesGrouped.baby.length}</p>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e", margin: 0 }}>
+                        {favoritesGrouped.baby.length > 0 ? favoritesGrouped.baby.map((m) => m.name).join(" · ") : "Nenhuma no momento"}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -387,23 +458,26 @@ export default function FlowerModal({ flower, members, onClose, onFlowerOwned }:
                     Nenhuma florista possui esta flor ainda
                   </p>
                 </div>
-              ) : owners.map((m) => (
-                <div key={m.id} style={{
-                  display: "flex", alignItems: "center", gap: 12,
-                  background: "#FFF9F2", border: "1px solid #f5eef8",
-                  borderRadius: 14, padding: "11px 14px",
-                }}>
-                  {m.avatar
-                    ? <img src={m.avatar} alt={m.name} style={{ width: 38, height: 38, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} />
-                    : <div style={{ width: 38, height: 38, borderRadius: 10, background: "#FFF0F5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>🌸</div>
-                  }
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontWeight: 800, color: "#3a2a3a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: "#c4a8c4", margin: 0 }}>{m.cargo}</p>
-                  </div>
-                  {m.favorites.includes(flower.name) && <span style={{ fontSize: 15 }}>💎</span>}
-                </div>
-              ))}
+              ) : (
+                <>
+                  {ownersGrouped.floralis.length > 0 && (
+                    <>
+                      <p style={{ fontSize: 11, fontWeight: 800, color: "#C8849E", textTransform: "uppercase", letterSpacing: "0.04em", margin: "4px 0 2px" }}>
+                        🦋 Floralis · {ownersGrouped.floralis.length}
+                      </p>
+                      {ownersGrouped.floralis.map((m) => <OwnerRow key={m.id} m={m} flowerName={flower.name} />)}
+                    </>
+                  )}
+                  {ownersGrouped.baby.length > 0 && (
+                    <>
+                      <p style={{ fontSize: 11, fontWeight: 800, color: "#4a8a5a", textTransform: "uppercase", letterSpacing: "0.04em", margin: "10px 0 2px" }}>
+                        🧸 Floralis Baby · {ownersGrouped.baby.length}
+                      </p>
+                      {ownersGrouped.baby.map((m) => <OwnerRow key={m.id} m={m} flowerName={flower.name} />)}
+                    </>
+                  )}
+                </>
+              )}
               <div style={{ marginTop: 4 }}>
                 <ReportButton flower={flower} onFlowerOwned={onFlowerOwned} />
               </div>
