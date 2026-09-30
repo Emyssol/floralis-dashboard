@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { auth } from "@/app/lib/auth"
 import { getDashboardData } from "@/app/lib/getDashboardData"
 import { redis, MISSOES_CONCLUIDAS_KEY, PONTOS_EXTRA_KEY } from "@/app/lib/redis"
 
@@ -57,6 +58,11 @@ function derivarConcluidas(progresso: Record<string, number>): string[] {
 }
 
 export async function GET(request: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  }
+
   const forceRefresh = new URL(request.url).searchParams.get("refresh") === "1"
 
   if (!forceRefresh && cache && Date.now() - cache.ts < CACHE_TTL) {
