@@ -2,9 +2,11 @@ interface SearchBarProps {
   search: string
   setSearch: (value: string) => void
   placeholder?: string
+  id?: string
+  autoFocus?: boolean
 }
 
-export default function SearchBar({ search, setSearch, placeholder = "Buscar..." }: SearchBarProps) {
+export default function SearchBar({ search, setSearch, placeholder = "Buscar...", id, autoFocus = false }: SearchBarProps) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 10,
@@ -23,10 +25,12 @@ export default function SearchBar({ search, setSearch, placeholder = "Buscar..."
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
       <input
+        id={id}
         type="text"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder={placeholder}
+        autoFocus={autoFocus}
         style={{
           flex: 1, background: "transparent",
           border: "none", outline: "none",

@@ -57,7 +57,7 @@ const cards: Card[] = [
     badge: null,
   },
   {
-    label: "Floristas",
+    label: "Matriz",
     description: "Gerencie suas flores da competição e acompanhe outras floristas também.",
     page: "floristas"      as const,
     icon: "/icons/team.png",
@@ -71,7 +71,7 @@ const cards: Card[] = [
     badge: null,
   },
   {
-    label: "Floralis Baby",
+    label: "Baby",
     description: "Gerencie flores, competições e integrantes da nossa guilda escola.",
     page: "floralis-baby"  as const,
     icon: null,

@@ -2,11 +2,24 @@
 
 import { motion, AnimatePresence } from "framer-motion"
 import ModalPortal from "@/app/components/ModalPortal"
+import ChangePasswordModal from "@/app/components/ChangePasswordModal"
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { rarityConfig } from "@/app/lib/rarity"
+import { CARGOS_ADMIN } from "@/app/lib/permissoes"
+import { getMissoesMax } from "@/app/lib/missoesMax"
 import type { Flower, Member } from "@/app/lib/types"
 
-interface Props { member: Member; flowers: Flower[]; onClose: () => void }
+interface Props {
+  member: Member
+  flowers: Flower[]
+  missoesConcluidas?: string[]   // ids das floristas que já concluíram as missões da semana
+  missoesProgresso?: Record<string, number>   // florista_id -> progresso 0..missoesMax (24 Matriz / 18 Baby)
+  pontosExtra?: Record<string, Record<string, number>>   // florista_id -> flower_name -> +1..4
+  onMissoesConcluidasChange?: (floristaId: string, concluiu: boolean) => void
+  onPontosExtraChange?: (floristaId: string, flowerName: string, pontos: number | null) => void
+  onClose: () => void
+}
 
 const rarityOrder = ["❤️ UR", "💛 SSR", "💜 SR", "💙 R", "💚 N"]
 
@@ -34,7 +47,7 @@ function initials(name: string) {
   return (parts[0][0] + parts[1][0]).toUpperCase()
 }
 
-export default function MemberModal({ member, flowers, onClose }: Props) {
+export default function MemberModal({ member, flowers, missoesConcluidas = [], missoesProgresso = {}, pontosExtra = {}, onMissoesConcluidasChange, onPontosExtraChange, onClose }: Props) {
   const ownedFlowers = flowers.filter((f) => member.flowers.includes(f.name))
   const urOwned      = ownedFlowers.filter((f) => f.rarity === "❤️ UR").length
   const ssrOwned     = ownedFlowers.filter((f) => f.rarity === "💛 SSR").length
@@ -43,6 +56,105 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
   const cargo  = cargoStyle[member.cargo]   ?? cargoStyle["Membro"]
   const status = statusStyle[member.status] ?? statusStyle["Offline"]
   const ini    = initials(member.name)
+
+  const { data: session } = useSession()
+  const isAdmin = !!session?.user?.cargo && CARGOS_ADMIN.includes(session.user.cargo)
+  const isSelf  = !!session?.user?.id && session.user.id === member.id
+  const [showChangePassword, setShowChangePassword] = useState(false)
+
+  // ── Estado semanal "concluí minhas missões" (Redis, via /api/dashboard) ──
+  const [missoesDone, setMissoesDone]       = useState(() => missoesConcluidas.includes(member.id))
+  const [pendingAction, setPendingAction]   = useState<"concluir" | "desfazer" | null>(null)
+  const [missoesError, setMissoesError]     = useState("")
+  const [reativando, setReativando]         = useState(false)
+  const [reativarOk, setReativarOk]         = useState(false)
+
+  useEffect(() => {
+    setMissoesDone(missoesConcluidas.includes(member.id))
+  }, [missoesConcluidas, member.id])
+
+  // Progresso real (0..missoesMax) — dois botões independentes (Concluí /
+  // Ainda estou fazendo) em vez de um flip-flop binário. "Concluí" nunca
+  // reduz nada (o teto da guilda dela é sempre livre). "Ainda estou
+  // fazendo" manda 0 — se já havia progresso salvo, confirma antes (é uma
+  // redução deliberada, não um clique acidental) e só então manda
+  // allowDecrease:true. Teto por guilda: 24 na Matriz, 18 na Baby.
+  const currentProgresso = missoesProgresso[member.id] ?? 0
+  const missoesMax = getMissoesMax(member.guild)
+
+  async function handleSetMissoes(alvo: number, allowDecrease: boolean) {
+    if (pendingAction) return
+    setPendingAction(alvo >= missoesMax ? "concluir" : "desfazer")
+    setMissoesError("")
+    try {
+      const res = await fetch("/api/floristas/concluir-missoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // O endpoint agora guarda um contador granular (0 até o teto da
+        // guilda), não mais um booleano — esses dois botões só mandam os
+        // extremos do intervalo. O backend recalcula o teto de novo a
+        // partir da guilda real da florista, então "alvo" aqui é só um
+        // pedido — o valor final que volta em `data.progresso` é a
+        // verdade.
+        body: JSON.stringify({ florista_id: member.id, progresso: alvo, allowDecrease }),
+      })
+      if (!res.ok) throw new Error("Erro")
+      const data = await res.json().catch(() => null)
+      const novo = (data?.progresso ?? alvo) >= missoesMax
+      setMissoesDone(novo)
+      // Atualização otimista no pai — MissoesView, WeeklySummary e FlowerModal
+      // refletem na hora, sem esperar novo fetch do /api/dashboard.
+      onMissoesConcluidasChange?.(member.id, novo)
+    } catch { setMissoesError("Erro ao salvar. Tente de novo.") }
+    finally { setPendingAction(null) }
+  }
+
+  function handleAindaEstouFazendo() {
+    if (pendingAction) return
+    if (currentProgresso > 0) {
+      const ok = window.confirm(
+        `Isso vai voltar seu progresso de ${currentProgresso}/${missoesMax} para 0/${missoesMax}. Confirmar?`
+      )
+      if (!ok) return
+      handleSetMissoes(0, true)   // ação deliberada e confirmada — pode reduzir
+    } else {
+      handleSetMissoes(0, false)  // já é 0 — no-op
+    }
+  }
+
+  async function handleReativarMissoes() {
+    if (!window.confirm("Reativar as missões de TODAS as floristas agora? Isso zera o estado desta semana.")) return
+    setReativando(true)
+    try {
+      const res = await fetch("/api/admin/reativar-missoes", { method: "POST" })
+      if (!res.ok) throw new Error("Erro")
+      setMissoesDone(false)
+      setReativarOk(true)
+      setTimeout(() => setReativarOk(false), 2500)
+    } catch { setMissoesError("Erro ao reativar. Tente de novo.") }
+    finally { setReativando(false) }
+  }
+
+  // ── Pontos extras por flor (Redis, permanente) ──
+  const bonusOf = (flowerName: string) => pontosExtra[member.id]?.[flowerName] ?? 0
+  const [editingBonusFor, setEditingBonusFor] = useState<string | null>(null)
+  const [bonusLoading, setBonusLoading]       = useState(false)
+  const [bonusError, setBonusError]           = useState("")
+
+  async function handleSetPontosExtra(flowerName: string, pontos: number | null) {
+    setBonusLoading(true); setBonusError("")
+    try {
+      const res = await fetch("/api/floristas/pontos-extra", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ florista_id: member.id, flower_name: flowerName, pontos }),
+      })
+      if (!res.ok) throw new Error("Erro")
+      onPontosExtraChange?.(member.id, flowerName, pontos)
+      setEditingBonusFor(null)
+    } catch { setBonusError("Erro ao salvar. Tente de novo.") }
+    finally { setBonusLoading(false) }
+  }
 
   const [editingFavs, setEditingFavs] = useState(false)
   const [selected, setSelected]       = useState<Set<string>>(new Set(member.favorites))
@@ -113,6 +225,7 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
   }, [])
 
   return (
+    <>
     <ModalPortal>
     <motion.div
       style={{ position:"fixed",inset:0,background:"rgba(40,20,45,0.42)",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",zIndex:50,isolation:"isolate",display:"flex",alignItems:"flex-end",justifyContent:"center" }}
@@ -204,6 +317,36 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                     )}
                   </button>
                 )}
+                {/* Admin: definir/resetar a senha de login por e-mail e senha desta florista */}
+                {isAdmin && (
+                  <button
+                    onClick={() => setShowChangePassword(true)}
+                    style={{
+                      background: "rgba(200,160,190,0.12)", color: "#85667F",
+                      border: "1px solid rgba(200,160,190,0.22)",
+                      borderRadius: 999, padding: "2px 9px", fontSize: 10, fontWeight: 700,
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    🔑 Definir senha
+                  </button>
+                )}
+                {/* Admin: zera o estado semanal "concluí minhas missões" de todas as floristas */}
+                {isAdmin && (
+                  <button
+                    onClick={handleReativarMissoes}
+                    disabled={reativando}
+                    style={{
+                      background: reativarOk ? "rgba(92,184,122,0.18)" : "rgba(200,160,190,0.12)",
+                      color: reativarOk ? "#4a8a5a" : "#85667F",
+                      border: `1px solid ${reativarOk ? "rgba(92,184,122,0.35)" : "rgba(200,160,190,0.22)"}`,
+                      borderRadius: 999, padding: "2px 9px", fontSize: 10, fontWeight: 700,
+                      cursor: reativando ? "not-allowed" : "pointer", fontFamily: "inherit",
+                    }}
+                  >
+                    {reativarOk ? "✓ Reativadas!" : reativando ? "..." : "🔄 Reativar todas agora"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -229,6 +372,68 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
 
           <div style={{ padding:"12px 16px 32px",display:"flex",flexDirection:"column",gap:16 }}>
 
+            {/* Missões da semana — só aparece no próprio perfil. Dois botões
+                independentes: "Concluí" sempre livre (24 nunca é redução).
+                "Ainda estou fazendo" fica clicável sempre, mas confirma antes
+                se já havia progresso salvo — reduzir é deliberado, não um
+                clique acidental que apaga progresso granular sem avisar. */}
+            {isSelf && (
+              <div>
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  <button
+                    onClick={() => handleSetMissoes(missoesMax, false)}
+                    disabled={!!pendingAction}
+                    style={{
+                      width:"100%",
+                      display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                      background: missoesDone
+                        ? "rgba(212,234,216,0.35)"
+                        : "linear-gradient(135deg,#C8849E,#9B7FCC)",
+                      border: missoesDone ? "1px solid rgba(92,184,122,0.45)" : "none",
+                      borderRadius:14, padding:"12px 16px",
+                      fontSize:13, fontWeight:800,
+                      color: missoesDone ? "#4a8a5a" : "white",
+                      cursor: pendingAction ? "not-allowed" : "pointer",
+                      opacity: pendingAction ? 0.7 : 1,
+                    }}
+                  >
+                    {pendingAction === "concluir"
+                      ? "Salvando..."
+                      : missoesDone
+                        ? `✅ Missões concluídas (${missoesMax}/${missoesMax})`
+                        : "✅ Concluí minhas missões desta semana"}
+                  </button>
+
+                  <button
+                    onClick={handleAindaEstouFazendo}
+                    disabled={!!pendingAction}
+                    style={{
+                      width:"100%",
+                      display:"flex",alignItems:"center",justifyContent:"center",gap:8,
+                      background:"rgba(200,160,190,0.10)",
+                      border:"1px solid rgba(200,160,190,0.18)",
+                      borderRadius:14, padding:"10px 16px",
+                      fontSize:12, fontWeight:700,
+                      color:"#85667F",
+                      cursor: pendingAction ? "not-allowed" : "pointer",
+                      opacity: pendingAction ? 0.7 : 1,
+                    }}
+                  >
+                    {pendingAction === "desfazer" ? "Salvando..." : "↩️ Ainda estou fazendo"}
+                  </button>
+                </div>
+
+                {missoesDone && (
+                  <p style={{ fontSize:11,fontWeight:600,color:"#4a8a5a",textAlign:"center",margin:"6px 0 0" }}>
+                    Suas preferidas saem da vitrine de competição até o reset semanal 🌸
+                  </p>
+                )}
+                {missoesError && (
+                  <p style={{ fontSize:11,color:"#B06080",textAlign:"center",margin:"6px 0 0" }}>{missoesError}</p>
+                )}
+              </div>
+            )}
+
             {/* Flores para Competição */}
             <div>
               <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8 }}>
@@ -249,29 +454,108 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
                 {!editingFavs ? (
                   <motion.div key="display" initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
                     style={{ background:"linear-gradient(160deg,rgba(255,255,255,0.90) 0%,rgba(205,183,238,0.08) 100%)",border:"1px solid rgba(205,183,238,0.28)",borderRadius:16,padding:"12px 14px",minHeight:48 }}>
-                    {member.favorites.length>0 ? (
-                      <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
-                        {[...member.favorites]
-                          .map(name => ({ name, fd: flowers.find(f=>f.name===name) }))
-                          .sort((a,b) => {
-                            const ri = rarityOrder.indexOf(a.fd?.rarity ?? "") - rarityOrder.indexOf(b.fd?.rarity ?? "")
-                            if (ri !== 0) return ri
-                            return a.name.localeCompare(b.name, "pt-BR")
-                          })
-                          .map(({ name, fd }) => {
-                          const cfg = fd ? rarityConfig[fd.rarity as keyof typeof rarityConfig] : null
-                          const t = cfg
-                            ? { background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}33` }
-                            : { background:"rgba(232,184,203,0.20)",color:"#C8849E",border:"1px solid rgba(232,184,203,0.40)" }
-                          return (
-                            <span key={name} style={{ ...t,borderRadius:999,padding:"4px 10px",fontSize:11,fontWeight:700,display:"inline-flex",alignItems:"center",gap:4 }}>
-                              {fd && <span style={{ fontSize:9,opacity:0.8 }}>{fd.rarity.split(" ")[0]}</span>}
-                              {name}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    ) : (
+                    {member.favorites.length>0 ? (() => {
+                      const withFd = [...member.favorites].map(name => ({ name, fd: flowers.find(f=>f.name===name) }))
+                      const byRarityThenName = (a: typeof withFd[number], b: typeof withFd[number]) => {
+                        const ri = rarityOrder.indexOf(a.fd?.rarity ?? "") - rarityOrder.indexOf(b.fd?.rarity ?? "")
+                        if (ri !== 0) return ri
+                        return a.name.localeCompare(b.name, "pt-BR")
+                      }
+                      // "Sobe pra cima da lista" só vale DENTRO da competição:
+                      // bonusFlowers (com +N, maior pro menor) antes de uma divisória,
+                      // o resto embaixo na ordem de sempre (raridade → nome).
+                      const bonusFlowers = withFd
+                        .filter(x => bonusOf(x.name) > 0)
+                        .sort((a,b) => (bonusOf(b.name) - bonusOf(a.name)) || byRarityThenName(a,b))
+                      const rest = withFd.filter(x => bonusOf(x.name) === 0).sort(byRarityThenName)
+
+                      const renderChip = ({ name, fd }: typeof withFd[number], highlighted: boolean) => {
+                        const cfg = fd ? rarityConfig[fd.rarity as keyof typeof rarityConfig] : null
+                        const t = cfg
+                          ? { background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.color}33` }
+                          : { background:"rgba(232,184,203,0.20)",color:"#C8849E",border:"1px solid rgba(232,184,203,0.40)" }
+                        const n = bonusOf(name)
+                        const inner = (
+                          <>
+                            {highlighted && <span style={{ fontSize:11 }}>⭐</span>}
+                            {fd && <span style={{ fontSize:9,opacity:0.8 }}>{fd.rarity.split(" ")[0]}</span>}
+                            {name}
+                            {n > 0 && (
+                              <span style={{ background:"#FECDD3",color:"#9F1239",border:"1px solid #FDA4AF",borderRadius:999,padding:"0 5px",fontSize:9,fontWeight:900,lineHeight:"15px" }}>+{n}</span>
+                            )}
+                          </>
+                        )
+                        const base = {
+                          ...t, borderRadius:999,
+                          padding: highlighted ? "6px 12px" : "4px 10px",
+                          fontSize: highlighted ? 12 : 11, fontWeight:700,
+                          display:"inline-flex", alignItems:"center", gap:4,
+                          ...(highlighted ? { boxShadow:"0 1px 6px rgba(159,18,57,0.14)" } : {}),
+                        } as const
+                        if (!isSelf) return <span key={name} style={base}>{inner}</span>
+                        return (
+                          <button
+                            key={name}
+                            onClick={() => setEditingBonusFor(prev => prev === name ? null : name)}
+                            style={{ ...base, cursor:"pointer", fontFamily:"inherit",
+                              outline: editingBonusFor === name ? "2px solid #9F1239" : "none", outlineOffset: 1 }}
+                          >
+                            {inner}
+                          </button>
+                        )
+                      }
+
+                      return (
+                        <>
+                          {bonusFlowers.length > 0 && (
+                            <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                              {bonusFlowers.map(x => renderChip(x, true))}
+                            </div>
+                          )}
+                          {bonusFlowers.length > 0 && rest.length > 0 && (
+                            <div style={{ height:1, background:"rgba(159,18,57,0.14)", margin:"10px 0" }} />
+                          )}
+                          {rest.length > 0 && (
+                            <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+                              {rest.map(x => renderChip(x, false))}
+                            </div>
+                          )}
+
+                          {isSelf && editingBonusFor && (
+                            <div style={{ marginTop:10, padding:"10px 12px", background:"rgba(255,255,255,0.92)", border:"1px solid rgba(200,160,190,0.22)", borderRadius:12 }}>
+                              <p style={{ fontSize:11, fontWeight:700, color:"#4D3750", margin:"0 0 8px" }}>
+                                Pontos extras de <span style={{ color:"#9F1239" }}>{editingBonusFor}</span> {bonusLoading && "· salvando..."}
+                              </p>
+                              <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                                {[
+                                  { label:"Sem pontos extras", value:null as number | null },
+                                  { label:"+1", value:1 }, { label:"+2", value:2 }, { label:"+3", value:3 }, { label:"+4", value:4 },
+                                ].map(opt => {
+                                  const active = (opt.value ?? 0) === bonusOf(editingBonusFor)
+                                  return (
+                                    <button
+                                      key={opt.label}
+                                      onClick={() => handleSetPontosExtra(editingBonusFor, opt.value)}
+                                      disabled={bonusLoading}
+                                      style={{
+                                        background: active ? "#9F1239" : "rgba(232,184,203,0.16)",
+                                        color: active ? "white" : "#85667F",
+                                        border: `1px solid ${active ? "#9F1239" : "rgba(200,160,190,0.28)"}`,
+                                        borderRadius:999, padding:"5px 12px", fontSize:11, fontWeight:700,
+                                        cursor: bonusLoading ? "not-allowed" : "pointer", fontFamily:"inherit",
+                                      }}
+                                    >
+                                      {opt.label}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                              {bonusError && <p style={{ fontSize:11, color:"#B06080", margin:"8px 0 0" }}>{bonusError}</p>}
+                            </div>
+                          )}
+                        </>
+                      )
+                    })() : (
                       <p style={{ fontSize:12,fontWeight:600,color:"#B8A0B8",margin:0,textAlign:"center" }}>Nenhuma flor preferida registrada ainda</p>
                     )}
                   </motion.div>
@@ -356,5 +640,14 @@ export default function MemberModal({ member, flowers, onClose }: Props) {
       </motion.div>
     </motion.div>
     </ModalPortal>
+    {showChangePassword && (
+      <ChangePasswordModal
+        floristaId={member.id}
+        floristaName={member.name}
+        mode="admin"
+        onClose={() => setShowChangePassword(false)}
+      />
+    )}
+    </>
   )
 }

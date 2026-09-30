@@ -5,6 +5,52 @@ import { CARGOS_ADMIN } from "@/app/lib/permissoes"
 
 // Mesmo nome de propriedade usado em getDashboardData.ts
 const PROP_COMPETICAO = "🎖️ Flores para Competição"
+const PROP_QUEM_TEM   = "👑 Quem tem"
+
+async function getFullRelationIds(pageId: string, propertyId: string): Promise<string[]> {
+  const ids: string[] = []
+  let cursor: string | undefined
+  do {
+    const res = await notion.pages.properties.retrieve({
+      page_id: pageId,
+      property_id: propertyId,
+      start_cursor: cursor,
+    } as any)
+    if (res.object === "list") {
+      for (const item of (res as any).results) {
+        if (item.type === "relation") ids.push(item.relation.id)
+      }
+      cursor = (res as any).next_cursor ?? undefined
+    } else {
+      break
+    }
+  } while (cursor)
+  return ids
+}
+
+// Confere no Notion se a florista realmente tem essa flor (não confia só no
+// que o client mandou) — em lotes pequenos pra não estourar o rate limit.
+async function filterOwnedByFlorista(floresIds: string[], floristaId: string): Promise<string[]> {
+  const owned: string[] = []
+  const BATCH = 5
+  for (let i = 0; i < floresIds.length; i += BATCH) {
+    const batch = floresIds.slice(i, i + BATCH)
+    const results = await Promise.allSettled(
+      batch.map(async (flowerId) => {
+        const page: any = await notion.pages.retrieve({ page_id: flowerId })
+        const quemTemProp = page.properties?.[PROP_QUEM_TEM]
+        const ownerIds: string[] = quemTemProp?.has_more
+          ? await getFullRelationIds(flowerId, quemTemProp.id)
+          : (quemTemProp?.relation?.map((r: any) => r.id) ?? [])
+        return { flowerId, isOwner: ownerIds.includes(floristaId) }
+      })
+    )
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value.isOwner) owned.push(r.value.flowerId)
+    }
+  }
+  return owned
+}
 
 // ── POST — substitui a seleção semanal de flores para competição ──
 // Diferente da posse: aqui a lista é SUBSTITUÍDA inteira (não acrescentada),
@@ -36,17 +82,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Regra de negócio: só entra na competição quem a florista já tem de
+    // verdade. O client já esconde flores sem posse, mas isso protege contra
+    // uma chamada direta à API — flores sem posse são silenciosamente
+    // ignoradas (não derruba a solicitação inteira por causa de uma só).
+    const ownedIds = await filterOwnedByFlorista(flores_ids, florista_id)
+    const ignored = flores_ids.length - ownedIds.length
+
     // Substitui a relation inteira na página da própria florista
     await notion.pages.update({
       page_id: florista_id,
       properties: {
         [PROP_COMPETICAO]: {
-          relation: flores_ids.map((id: string) => ({ id })),
+          relation: ownedIds.map((id: string) => ({ id })),
         },
       },
     })
 
-    return NextResponse.json({ success: true, total: flores_ids.length })
+    return NextResponse.json({ success: true, total: ownedIds.length, ignored })
 
   } catch (error: any) {
     console.error("[API Marcar Competição] Erro:", error?.message)

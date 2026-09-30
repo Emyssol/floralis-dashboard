@@ -7,6 +7,7 @@ interface Props {
   flowers: Flower[]
   members: Member[]
   onSelectMember: (m: Member) => void
+  onOpenAnalytics?: () => void
 }
 
 function initials(name: string) {
@@ -35,7 +36,7 @@ function guildBadge(guild: string) {
   }
 }
 
-export default function FloristasView({ flowers, members, onSelectMember }: Props) {
+export default function FloristasView({ flowers, members, onSelectMember, onOpenAnalytics }: Props) {
   const ranked = members
     .map((m) => ({
       member: m,
@@ -50,6 +51,20 @@ export default function FloristasView({ flowers, members, onSelectMember }: Prop
 
   return (
     <>
+      {onOpenAnalytics && (
+        <button
+          onClick={onOpenAnalytics}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 4,
+            background: "none", border: "none", padding: 0, marginBottom: 12,
+            fontFamily: "inherit", fontSize: 12, fontWeight: 700, color: "#7060A8",
+            cursor: "pointer",
+          }}
+        >
+          Ver analytics desta guilda →
+        </button>
+      )}
+
       <div className="floristas-grid">
         {ranked.map(({ member, count, ssrCount, urCount, prefCount }, i) => {
           const cargo = cargoStyle[member.cargo] ?? cargoStyle["Membro"]

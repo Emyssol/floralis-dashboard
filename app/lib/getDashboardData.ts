@@ -7,6 +7,19 @@ const PROP_FLORES_COMPETICAO = "J%5EvN"
 let cache: { flowers: Flower[]; members: Member[]; ts: number } | null = null
 const CACHE_TTL = 5 * 60 * 1000 // 5 min — o botão de atualizar manual força um refresh quando precisar
 
+// Retry com backoff linear simples — protege contra falhas de rede pontuais
+// (ETIMEDOUT etc.) numa única chamada de paginação da API do Notion.
+async function fetchWithRetry<T>(fn: () => Promise<T>, retries = 2, delayMs = 500): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn()
+    } catch (error) {
+      if (attempt >= retries) throw error
+      await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)))
+    }
+  }
+}
+
 async function queryAll(databaseId: string): Promise<any[]> {
   const results: any[] = []
   let cursor: string | undefined
@@ -26,11 +39,13 @@ async function getFullRelation(pageId: string, propertyId: string): Promise<stri
   const ids: string[] = []
   let cursor: string | undefined
   do {
-    const res = await notion.pages.properties.retrieve({
-      page_id: pageId,
-      property_id: propertyId,
-      start_cursor: cursor,
-    } as any)
+    const res = await fetchWithRetry(() =>
+      notion.pages.properties.retrieve({
+        page_id: pageId,
+        property_id: propertyId,
+        start_cursor: cursor,
+      } as any)
+    )
     if (res.object === "list") {
       for (const item of (res as any).results) {
         if (item.type === "relation") ids.push(item.relation.id)
@@ -83,9 +98,17 @@ export async function getDashboardData(forceRefresh = false): Promise<{ flowers:
       const name = page.properties["🌸 Nome da Flor"]?.title?.[0]?.plain_text || "Flor misteriosa"
 
       const quemTemProp = page.properties["👑 Quem tem"]
-      const ownerIds: string[] = quemTemProp?.has_more
-        ? await getFullRelation(page.id, quemTemProp.id)
-        : (quemTemProp?.relation?.map((r: any) => r.id) ?? [])
+      let ownerIds: string[]
+      if (quemTemProp?.has_more) {
+        try {
+          ownerIds = await getFullRelation(page.id, quemTemProp.id)
+        } catch (error) {
+          console.error(`[getDashboardData] Falha ao buscar relation completa de "${name}", usando lista truncada:`, error)
+          ownerIds = quemTemProp.relation?.map((r: any) => r.id) ?? []
+        }
+      } else {
+        ownerIds = quemTemProp?.relation?.map((r: any) => r.id) ?? []
+      }
 
       for (const ownerId of ownerIds) {
         if (!ownersByFlorista[ownerId]) ownersByFlorista[ownerId] = []
@@ -117,7 +140,14 @@ export async function getDashboardData(forceRefresh = false): Promise<{ flowers:
     str.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\s]+/u, "").trim() || str
 
   const members: Member[] = await processInBatches(membersRes.value, 10, async (member: any) => {
-    const favoriteIds = await resolveRelation(member, "🎖️ Flores para Competição", PROP_FLORES_COMPETICAO)
+    const memberName = member.properties["🎮 Nick do jogo"]?.title?.[0]?.plain_text || "Florista"
+    let favoriteIds: string[]
+    try {
+      favoriteIds = await resolveRelation(member, "🎖️ Flores para Competição", PROP_FLORES_COMPETICAO)
+    } catch (error) {
+      console.error(`[getDashboardData] Falha ao buscar relation completa de "${memberName}", usando lista truncada:`, error)
+      favoriteIds = member.properties["🎖️ Flores para Competição"]?.relation?.map((r: any) => r.id) ?? []
+    }
 
     const statusRaw =
       member.properties["⚔️ Status na competição"]?.select?.name ||

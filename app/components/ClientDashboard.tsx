@@ -86,6 +86,9 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 export default function ClientDashboard({ initialFlowers, initialMembers, onRevalidate }: Props) {
   const [flowers, setFlowers]   = useState<Flower[]>(initialFlowers ?? [])
   const [members, setMembers]   = useState<Member[]>(initialMembers ?? [])
+  const [missoesConcluidas, setMissoesConcluidas] = useState<string[]>([])
+  const [missoesProgresso, setMissoesProgresso] = useState<Record<string, number>>({})
+  const [pontosExtra, setPontosExtra] = useState<Record<string, Record<string, number>>>({})
   const [loading, setLoading]   = useState(!initialFlowers)
   const [error, setError]       = useState("")
   const [mounted, setMounted] = useState(false)
@@ -109,6 +112,87 @@ export default function ClientDashboard({ initialFlowers, initialMembers, onReva
     )
   }
 
+  // Contraparte de handleFlowerOwned — usada pelo OwnedFlowersModal ao
+  // desmarcar posse. Em cascata (espelhando o que a API já faz no Notion):
+  // tira a flor da competição e zera o bônus dela, se havia.
+  function handleFlowerUnowned(flowerId: string, floristaId: string) {
+    const flowerName = flowers.find((f) => f.id === flowerId)?.name
+    if (!flowerName) return
+
+    setMembers((prev) =>
+      prev.map((m) =>
+        m.id === floristaId
+          ? { ...m, flowers: m.flowers.filter((n) => n !== flowerName), favorites: m.favorites.filter((n) => n !== flowerName) }
+          : m
+      )
+    )
+    setFlowers((prev) =>
+      prev.map((f) => (f.id === flowerId ? { ...f, owners: Math.max(0, f.owners - 1) } : f))
+    )
+    setPontosExtra((prev) => {
+      if (!prev[floristaId]?.[flowerName]) return prev
+      const doFlorista = { ...prev[floristaId] }
+      delete doFlorista[flowerName]
+      const next = { ...prev }
+      if (Object.keys(doFlorista).length === 0) delete next[floristaId]; else next[floristaId] = doFlorista
+      return next
+    })
+  }
+
+  // Atualização otimista da lista de flores para competição — usada pelo
+  // CompetitionFlowersModal, que substitui a lista inteira a cada toggle
+  // (mesma semântica de /api/flores/marcar-competicao).
+  function handleFlowerCompetitionChange(floristaId: string, favoriteNames: string[]) {
+    setMembers((prev) =>
+      prev.map((m) => (m.id === floristaId ? { ...m, favorites: favoriteNames } : m))
+    )
+  }
+
+  // Atualização otimista do progresso semanal de missões (0-24) — mantém o
+  // app local em sincronia assim que a florista incrementa/ajusta, sem
+  // esperar o próximo fetch do /api/dashboard (cache de 5 min ou botão de
+  // atualizar). Deriva tudo que os outros componentes já esperavam do modelo
+  // antigo (booleano): missoesConcluidas (ids com progresso completo) e
+  // member.status — nenhum consumidor dessas duas precisou mudar.
+  function handleMissoesProgressoChange(floristaId: string, novoProgresso: number) {
+    const clamped = Math.max(0, Math.min(24, novoProgresso))
+    setMissoesProgresso((prev) => ({ ...prev, [floristaId]: clamped }))
+
+    const concluiu = clamped >= 24
+    setMissoesConcluidas((prev) =>
+      concluiu
+        ? (prev.includes(floristaId) ? prev : [...prev, floristaId])
+        : prev.filter((id) => id !== floristaId)
+    )
+    // Espelha também o member.status local — é dele que dependem os pills
+    // "Em Missão / Concluíram" e os selos de status por florista. Strings puras
+    // (sem emoji), iguais às chaves de statusCfg em MissoesView/WeeklySummary.
+    const novoStatus = concluiu ? "Concluiu" : "Em Missão"
+    setMembers((prev) =>
+      prev.map((m) => (m.id === floristaId ? { ...m, status: novoStatus } : m))
+    )
+  }
+
+  // Atualização otimista dos "pontos extras" por par (florista, flor) — dado
+  // permanente, mas a UI reflete na hora sem esperar novo fetch.
+  function handlePontosExtraChange(floristaId: string, flowerName: string, pontos: number | null) {
+    setPontosExtra((prev) => {
+      const doFlorista = { ...(prev[floristaId] ?? {}) }
+      if (pontos === null || pontos === 0) {
+        delete doFlorista[flowerName]
+      } else {
+        doFlorista[flowerName] = pontos
+      }
+      const next = { ...prev }
+      if (Object.keys(doFlorista).length === 0) {
+        delete next[floristaId]
+      } else {
+        next[floristaId] = doFlorista
+      }
+      return next
+    })
+  }
+
   async function load(forceRefresh = false) {
     setLoading(true)
     setError("")
@@ -120,6 +204,9 @@ export default function ClientDashboard({ initialFlowers, initialMembers, onReva
       if (data.error) throw new Error(data.error)
       setFlowers(data.flowers ?? [])
       setMembers(data.members ?? [])
+      setMissoesConcluidas(data.missoesConcluidas ?? [])
+      setMissoesProgresso(data.missoesProgresso ?? {})
+      setPontosExtra(data.pontosExtra ?? {})
       setLastUpdated(new Date())
     } catch (e: any) {
       setError(e.message ?? "Erro desconhecido")
@@ -149,7 +236,15 @@ export default function ClientDashboard({ initialFlowers, initialMembers, onReva
 
   return (
     <>
-      <Dashboard flowers={flowers} members={members} onFlowerOwned={handleFlowerOwned} />
+      <Dashboard
+        flowers={flowers} members={members}
+        missoesConcluidas={missoesConcluidas} missoesProgresso={missoesProgresso} pontosExtra={pontosExtra}
+        onFlowerOwned={handleFlowerOwned}
+        onFlowerUnowned={handleFlowerUnowned}
+        onFlowerCompetitionChange={handleFlowerCompetitionChange}
+        onMissoesProgressoChange={handleMissoesProgressoChange}
+        onPontosExtraChange={handlePontosExtraChange}
+      />
       {/* Botão de atualização flutuante */}
       <button
         onClick={handleRefresh}

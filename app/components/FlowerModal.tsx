@@ -11,8 +11,29 @@ interface Props {
   flower: Flower
   members: Member[]
   allMembers?: Member[]   // lista completa (ambas as guildas) — usada no seletor "Eu tenho essa flor"
+  missoesConcluidas?: string[]   // ids das floristas que já concluíram as missões da semana
+  pontosExtra?: Record<string, Record<string, number>>   // florista_id -> flower_name -> +1..4 (só leitura aqui)
   onClose: () => void
   onFlowerOwned?: (flowerId: string, floristaId: string) => void
+}
+
+// Selo "+N" de pontos extras — aparece em qualquer lugar que associe uma
+// florista a uma flor, esteja ou não nos favoritos de competição dela.
+function BonusBadge({ pontos }: { pontos: number }) {
+  return (
+    <span
+      title={`+${pontos} ${pontos > 1 ? "pontos extras" : "ponto extra"} (upou esta flor)`}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 2,
+        background: "#FECDD3", color: "#9F1239",
+        border: "1px solid #FDA4AF",
+        borderRadius: 999, padding: "0 6px",
+        fontSize: 10, fontWeight: 900, lineHeight: "16px",
+      }}
+    >
+      ⭐ +{pontos}
+    </span>
+  )
 }
 
 type ModalTab = "info" | "floristas"
@@ -46,7 +67,7 @@ function groupByGuild(list: Member[]) {
   }
 }
 
-function OwnerChip({ m, flowerName }: { m: Member; flowerName: string }) {
+function OwnerChip({ m, flowerName, bonus = 0 }: { m: Member; flowerName: string; bonus?: number }) {
   const isFav = m.favorites.includes(flowerName)
   const baby  = isBabyMember(m)
   const bg     = baby ? "#F0FDF4" : "#FFF0F5"
@@ -66,12 +87,14 @@ function OwnerChip({ m, flowerName }: { m: Member; flowerName: string }) {
         : <span style={{ width: 16, height: 16, borderRadius: "50%", background: border, fontSize: 8, fontWeight: 900, color, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{initials(m.name)}</span>
       }
       {m.name}
+      {/* +N é independente de isFav — dado permanente, ela pode nem estar competindo com essa flor agora */}
+      {bonus > 0 && <BonusBadge pontos={bonus} />}
       {isFav && <span title="Preferida para competição">🏆</span>}
     </span>
   )
 }
 
-function OwnerRow({ m, flowerName }: { m: Member; flowerName: string }) {
+function OwnerRow({ m, flowerName, bonus = 0 }: { m: Member; flowerName: string; bonus?: number }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 12,
@@ -86,6 +109,7 @@ function OwnerRow({ m, flowerName }: { m: Member; flowerName: string }) {
         <p style={{ fontWeight: 800, color: "#3a2a3a", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
         <p style={{ fontSize: 11, fontWeight: 600, color: "#c4a8c4", margin: 0 }}>{m.cargo}</p>
       </div>
+      {bonus > 0 && <BonusBadge pontos={bonus} />}
       {m.favorites.includes(flowerName) && <span style={{ fontSize: 15 }}>🏆</span>}
     </div>
   )
@@ -216,7 +240,7 @@ function ReportButton({ flower, onFlowerOwned }: { flower: Flower; onFlowerOwned
   )
 }
 
-export default function FlowerModal({ flower, members, allMembers, onClose, onFlowerOwned }: Props) {
+export default function FlowerModal({ flower, members, allMembers, missoesConcluidas = [], pontosExtra = {}, onClose, onFlowerOwned }: Props) {
   const [tab, setTab]           = useState<ModalTab>("info")
   const [isMobile, setIsMobile] = useState(false)
   const rarity     = rarityConfig[flower.rarity as keyof typeof rarityConfig]
@@ -224,13 +248,33 @@ export default function FlowerModal({ flower, members, allMembers, onClose, onFl
   // com a lista completa; members fica só como fallback de compatibilidade.
   const familyMembers = allMembers ?? members
   const owners     = familyMembers.filter((m) => m.flowers.includes(flower.name))
-  const favorites  = familyMembers.filter((m) => m.favorites.includes(flower.name))
+  // Na seção "🏆 Preferida para competição", quem já concluiu as missões da
+  // semana some — mas continua contando normalmente em "✅ Quem tem" e no card
+  // de owners (que usam `owners`, sem esse filtro).
+  const favorites  = familyMembers.filter(
+    (m) => m.favorites.includes(flower.name) && !missoesConcluidas.includes(m.id)
+  )
   const ownerLabel = ownershipLabel(flower.owners)
   const rarityIndex = rarityOrder.indexOf(flower.rarity)
   const rarityStars = Math.max(1, 5 - rarityIndex)
   const popularity  = familyMembers.length > 0 ? flower.owners / familyMembers.length : 0
-  const ownersGrouped    = groupByGuild(owners)
-  const favoritesGrouped = groupByGuild(favorites)
+
+  // Pontos extras desta flor: florista_id -> +N (0 quando não tem)
+  const bonusFor = (m: Member) => pontosExtra[m.id]?.[flower.name] ?? 0
+
+  const ownersGrouped = groupByGuild(owners)
+  // Na "🏆 Preferida para competição": dentro de cada guilda, quem tem bônus
+  // vem primeiro (maior pro menor), depois o resto em ordem alfabética.
+  const sortFavorites = (list: Member[]) =>
+    [...list].sort((a, b) => {
+      const d = bonusFor(b) - bonusFor(a)
+      return d !== 0 ? d : a.name.localeCompare(b.name, "pt-BR")
+    })
+  const favoritesGroupedRaw = groupByGuild(favorites)
+  const favoritesGrouped = {
+    floralis: sortFavorites(favoritesGroupedRaw.floralis),
+    baby:     sortFavorites(favoritesGroupedRaw.baby),
+  }
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 640)
@@ -397,7 +441,7 @@ export default function FlowerModal({ flower, members, allMembers, onClose, onFl
                         🦋 Floralis · {ownersGrouped.floralis.length}
                       </p>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {ownersGrouped.floralis.map((m) => <OwnerChip key={m.id} m={m} flowerName={flower.name} />)}
+                        {ownersGrouped.floralis.map((m) => <OwnerChip key={m.id} m={m} flowerName={flower.name} bonus={bonusFor(m)} />)}
                       </div>
                     </div>
                   )}
@@ -407,7 +451,7 @@ export default function FlowerModal({ flower, members, allMembers, onClose, onFl
                         🧸 Floralis Baby · {ownersGrouped.baby.length}
                       </p>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {ownersGrouped.baby.map((m) => <OwnerChip key={m.id} m={m} flowerName={flower.name} />)}
+                        {ownersGrouped.baby.map((m) => <OwnerChip key={m.id} m={m} flowerName={flower.name} bonus={bonusFor(m)} />)}
                       </div>
                     </div>
                   )}
@@ -420,18 +464,27 @@ export default function FlowerModal({ flower, members, allMembers, onClose, onFl
                     🏆 Preferida para competição · {favorites.length} florista{favorites.length > 1 ? "s" : ""}
                   </p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div>
-                      <p style={{ fontSize: 10, fontWeight: 800, color: "#b07010", margin: "0 0 3px" }}>🦋 Floralis · {favoritesGrouped.floralis.length}</p>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e", margin: 0 }}>
-                        {favoritesGrouped.floralis.length > 0 ? favoritesGrouped.floralis.map((m) => m.name).join(" · ") : "Nenhuma no momento"}
-                      </p>
-                    </div>
-                    <div>
-                      <p style={{ fontSize: 10, fontWeight: 800, color: "#b07010", margin: "0 0 3px" }}>🧸 Floralis Baby · {favoritesGrouped.baby.length}</p>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e", margin: 0 }}>
-                        {favoritesGrouped.baby.length > 0 ? favoritesGrouped.baby.map((m) => m.name).join(" · ") : "Nenhuma no momento"}
-                      </p>
-                    </div>
+                    {([
+                      { label: "🦋 Floralis", list: favoritesGrouped.floralis },
+                      { label: "🧸 Floralis Baby", list: favoritesGrouped.baby },
+                    ] as const).map(({ label, list }) => (
+                      <div key={label}>
+                        <p style={{ fontSize: 10, fontWeight: 800, color: "#b07010", margin: "0 0 3px" }}>{label} · {list.length}</p>
+                        {list.length > 0 ? (
+                          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 5 }}>
+                            {list.map((m, i) => (
+                              <span key={m.id} style={{ fontSize: 12, fontWeight: 600, color: "#92400e", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                                {i > 0 && <span style={{ color: "#c9a86a", marginRight: 3 }}>·</span>}
+                                {m.name}
+                                {bonusFor(m) > 0 && <BonusBadge pontos={bonusFor(m)} />}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: 12, fontWeight: 600, color: "#92400e", margin: 0 }}>Nenhuma no momento</p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -465,7 +518,7 @@ export default function FlowerModal({ flower, members, allMembers, onClose, onFl
                       <p style={{ fontSize: 11, fontWeight: 800, color: "#C8849E", textTransform: "uppercase", letterSpacing: "0.04em", margin: "4px 0 2px" }}>
                         🦋 Floralis · {ownersGrouped.floralis.length}
                       </p>
-                      {ownersGrouped.floralis.map((m) => <OwnerRow key={m.id} m={m} flowerName={flower.name} />)}
+                      {ownersGrouped.floralis.map((m) => <OwnerRow key={m.id} m={m} flowerName={flower.name} bonus={bonusFor(m)} />)}
                     </>
                   )}
                   {ownersGrouped.baby.length > 0 && (
@@ -473,7 +526,7 @@ export default function FlowerModal({ flower, members, allMembers, onClose, onFl
                       <p style={{ fontSize: 11, fontWeight: 800, color: "#4a8a5a", textTransform: "uppercase", letterSpacing: "0.04em", margin: "10px 0 2px" }}>
                         🧸 Floralis Baby · {ownersGrouped.baby.length}
                       </p>
-                      {ownersGrouped.baby.map((m) => <OwnerRow key={m.id} m={m} flowerName={flower.name} />)}
+                      {ownersGrouped.baby.map((m) => <OwnerRow key={m.id} m={m} flowerName={flower.name} bonus={bonusFor(m)} />)}
                     </>
                   )}
                 </>

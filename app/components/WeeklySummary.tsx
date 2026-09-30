@@ -4,10 +4,12 @@ import { useState, useMemo } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { rarityConfig } from "@/app/lib/rarity"
 import type { Flower, Member } from "@/app/lib/types"
+import { getActiveCompetitionMembers, getCompetitionRanking } from "@/app/lib/competitionRanking"
 
 interface Props {
   flowers: Flower[]
   members: Member[]
+  missoesConcluidas: string[]
   onOpenAnalytics?: () => void
 }
 
@@ -123,24 +125,24 @@ function MissaoModal({ members, onClose }: { members: Member[]; onClose: () => v
 }
 
 // ── Modal: Flores na Competição ─────────────────────────────────────
-function CompetitionModal({ flowers, members, onClose }: { flowers: Flower[]; members: Member[]; onClose: () => void }) {
+function CompetitionModal({ flowers, members, missoesConcluidas, onClose }: { flowers: Flower[]; members: Member[]; missoesConcluidas: string[]; onClose: () => void }) {
   const [search, setSearch] = useState("")
 
-  const { ranked, total } = useMemo(() => {
-    const count: Record<string, number> = {}
-    members.filter((m) => m.status === "Em Missão").forEach((m) => {
-      m.favorites.forEach((name) => { count[name] = (count[name] ?? 0) + 1 })
-    })
-    const all = Object.entries(count).sort((a, b) => {
-      if (b[1] !== a[1]) return b[1] - a[1]
-      return a[0].localeCompare(b[0], "pt-BR")
-    })
-    return { ranked: all, total: all.length }
-  }, [members])
+  // Floristas em missão que AINDA não marcaram "concluí minhas missões" —
+  // essas continuam contando como "precisando" da flor pra competição. Mesma
+  // agregação usada em MissoesView e FocoDaSemanaCard — centralizada em
+  // app/lib/competitionRanking.ts.
+  const activeMembers = useMemo(
+    () => getActiveCompetitionMembers(members, missoesConcluidas),
+    [members, missoesConcluidas]
+  )
+
+  const ranking = useMemo(() => getCompetitionRanking(activeMembers), [activeMembers])
+  const total = ranking.length
 
   const filtered = search.trim()
-    ? ranked.filter(([name]) => name.toLowerCase().includes(search.toLowerCase()))
-    : ranked
+    ? ranking.filter((r) => r.name.toLowerCase().includes(search.toLowerCase()))
+    : ranking
 
   return (
     <motion.div
@@ -198,10 +200,9 @@ function CompetitionModal({ flowers, members, onClose }: { flowers: Flower[]; me
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {filtered.map(([name, count], i) => {
+              {filtered.map(({ name, count, users }, i) => {
                 const flower = flowers.find((f) => f.name === name)
                 const cfg = flower ? rarityConfig[flower.rarity as keyof typeof rarityConfig] : null
-                const users = members.filter((m) => m.status === "Em Missão" && m.favorites.includes(name)).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"))
                 const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null
                 return (
                   <motion.div
@@ -272,14 +273,15 @@ const statConfig: StatItem[] = [
   { icon: "/icons/grafics.png",  label: "Analytics",     accent: "#7060A8", tint: "rgba(205,183,238,0.10)", border: "rgba(205,183,238,0.26)", modal: "analytics"  },
 ]
 
-export default function WeeklySummary({ flowers, members, onOpenAnalytics }: Props) {
+export default function WeeklySummary({ flowers, members, missoesConcluidas, onOpenAnalytics }: Props) {
   const [openModal, setOpenModal] = useState<ModalType>(null)
 
   const values = useMemo(() => {
     const mission = members.filter((m) => m.status === "Em Missão")
-    const disputa = new Set(mission.flatMap((m) => m.favorites))
+    const activeMission = mission.filter((m) => !missoesConcluidas.includes(m.id))
+    const disputa = new Set(activeMission.flatMap((m) => m.favorites))
     return [mission.length, disputa.size, null] // Analytics não tem valor numérico
-  }, [flowers, members])
+  }, [members, missoesConcluidas])
 
   return (
     <>
@@ -355,7 +357,7 @@ export default function WeeklySummary({ flowers, members, onOpenAnalytics }: Pro
           <MissaoModal key="missao" members={members} onClose={() => setOpenModal(null)} />
         )}
         {openModal === "competicao" && (
-          <CompetitionModal key="competicao" flowers={flowers} members={members} onClose={() => setOpenModal(null)} />
+          <CompetitionModal key="competicao" flowers={flowers} members={members} missoesConcluidas={missoesConcluidas} onClose={() => setOpenModal(null)} />
         )}
       </AnimatePresence>
 
