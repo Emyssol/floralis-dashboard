@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { auth } from "@/app/lib/auth"
 import { getDashboardData } from "@/app/lib/getDashboardData"
 import { redis, MISSOES_CONCLUIDAS_KEY, PONTOS_EXTRA_KEY } from "@/app/lib/redis"
+import { getMissoesMax } from "@/app/lib/missoesMax"
+import type { Member } from "@/app/lib/types"
 
 let cache: { data: any; ts: number } | null = null
 const CACHE_TTL = 5 * 60 * 1000 // 5 min — o botão de atualizar manual força um refresh quando precisar
@@ -50,11 +52,17 @@ async function getPontosExtra(): Promise<Record<string, Record<string, number>>>
   }
 }
 
-// Ids com progresso >= 24 — mantido pro mesmo formato que MissoesView,
-// WeeklySummary, FlowerModal e competitionRanking.ts já consomem (lista de
-// quem "concluiu a semana"), sem precisar mexer em nenhum desses consumidores.
-function derivarConcluidas(progresso: Record<string, number>): string[] {
-  return Object.entries(progresso).filter(([, p]) => p >= 24).map(([id]) => id)
+// Ids com progresso >= teto da PRÓPRIA guilda da florista (24 na Matriz, 18
+// na Baby — app/lib/missoesMax.ts) — mantido pro mesmo formato que
+// MissoesView, WeeklySummary, FlowerModal e competitionRanking.ts já
+// consomem (lista de quem "concluiu a semana"), sem precisar mexer em
+// nenhum desses consumidores.
+function derivarConcluidas(progresso: Record<string, number>, members: Member[]): string[] {
+  const guildaPorFlorista: Record<string, string> = {}
+  for (const m of members) guildaPorFlorista[m.id] = m.guild
+  return Object.entries(progresso)
+    .filter(([id, p]) => p >= getMissoesMax(guildaPorFlorista[id]))
+    .map(([id]) => id)
 }
 
 export async function GET(request: Request) {
@@ -70,7 +78,7 @@ export async function GET(request: Request) {
       getMissoesProgresso(),
       getPontosExtra(),
     ])
-    const missoesConcluidas = derivarConcluidas(missoesProgresso)
+    const missoesConcluidas = derivarConcluidas(missoesProgresso, cache.data.members)
     return NextResponse.json({ ...cache.data, missoesConcluidas, missoesProgresso, pontosExtra }, {
       headers: { "X-Cache": "HIT" },
     })
@@ -83,7 +91,7 @@ export async function GET(request: Request) {
       getPontosExtra(),
     ])
     cache = { data, ts: Date.now() }
-    const missoesConcluidas = derivarConcluidas(missoesProgresso)
+    const missoesConcluidas = derivarConcluidas(missoesProgresso, data.members)
     return NextResponse.json({ ...data, missoesConcluidas, missoesProgresso, pontosExtra }, {
       headers: { "X-Cache": "MISS" },
     })
