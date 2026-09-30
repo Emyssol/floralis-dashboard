@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server"
+import { auth } from "@/app/lib/auth"
 import { getDashboardData } from "@/app/lib/getDashboardData"
 
 let cache: { data: any; ts: number } | null = null
 const CACHE_TTL = 5 * 60 * 1000 // 5 min — o botão de atualizar manual força um refresh quando precisar
 
 export async function GET(request: Request) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  }
+
   const forceRefresh = new URL(request.url).searchParams.get("refresh") === "1"
 
   if (!forceRefresh && cache && Date.now() - cache.ts < CACHE_TTL) {

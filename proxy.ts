@@ -24,9 +24,11 @@ export function proxy(request: NextRequest) {
 
 // Protege tudo, exceto:
 // - rotas do próprio NextAuth (/api/auth/*) — senão o login nunca completaria
+// - as rotas de cron (/api/cron/*) — o Vercel Cron não manda cookie de sessão,
+//   e essas rotas já se autenticam sozinhas via CRON_SECRET no header
 // - a própria página /login — senão vira loop de redirecionamento
 // - arquivos estáticos (manifest, ícones, imagens, etc — qualquer path com extensão)
 // - internals do Next.js (_next)
 export const config = {
-  matcher: ["/((?!api/auth|login|_next|.*\\..*).*)"],
+  matcher: ["/((?!api/auth|api/cron|login|_next|.*\\..*).*)"],
 }
