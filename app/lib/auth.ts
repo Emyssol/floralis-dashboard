@@ -1,6 +1,8 @@
 import NextAuth, { type Session, type User } from "next-auth"
 import type { JWT } from "next-auth/jwt"
 import Google from "next-auth/providers/google"
+import Credentials from "next-auth/providers/credentials"
+import bcrypt from "bcryptjs"
 import { notion } from "@/app/lib/notion"
 
 // Mesma base de Floristas já usada em getDashboardData.ts
@@ -11,6 +13,7 @@ type FloristaAuth = {
   name: string
   cargo: string
   guild: string
+  passwordHash: string | null
 }
 
 // Cache em memória de curtíssima duração — evita consultar o Notion 2x pelo
@@ -37,10 +40,11 @@ async function getFloristaByEmail(email: string): Promise<FloristaAuth | null> {
 
   const page = res.results[0] as any
   const florista: FloristaAuth | null = !page ? null : {
-    id:    page.id,
-    name:  page.properties["🎮 Nick do jogo"]?.title?.[0]?.plain_text ?? "Florista",
-    cargo: page.properties["🏷️ Cargo"]?.select?.name ?? "Membro",
-    guild: page.properties["🎖️ Guilda"]?.select?.name ?? "🦋 Floralis",
+    id:           page.id,
+    name:         page.properties["🎮 Nick do jogo"]?.title?.[0]?.plain_text ?? "Florista",
+    cargo:        page.properties["🏷️ Cargo"]?.select?.name ?? "Membro",
+    guild:        page.properties["🎖️ Guilda"]?.select?.name ?? "🦋 Floralis",
+    passwordHash: page.properties["🔑 Senha (hash)"]?.rich_text?.[0]?.plain_text ?? null,
   }
 
   floristaCache.set(key, { data: florista, ts: Date.now() })
@@ -48,7 +52,29 @@ async function getFloristaByEmail(email: string): Promise<FloristaAuth | null> {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  providers: [Google],
+  providers: [
+    Google,
+    Credentials({
+      name: "credentials",
+      credentials: {
+        email: { label: "E-mail", type: "email" },
+        password: { label: "Senha", type: "password" },
+      },
+      async authorize(credentials) {
+        const email = String(credentials?.email ?? "").trim().toLowerCase()
+        const password = String(credentials?.password ?? "")
+        if (!email || !password) return null
+
+        const florista = await getFloristaByEmail(email)
+        if (!florista || !florista.passwordHash) return null
+
+        const senhaValida = await bcrypt.compare(password, florista.passwordHash)
+        if (!senhaValida) return null
+
+        return { id: florista.id, name: florista.name, email }
+      },
+    }),
+  ],
   trustHost: true,
   pages: {
     signIn: "/login",

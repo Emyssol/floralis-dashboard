@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Quicksand } from "next/font/google"
 import { signIn } from "next-auth/react"
 
@@ -39,6 +41,30 @@ function GoogleIcon() {
 }
 
 export default function LoginPage() {
+  const router = useRouter()
+  const [mode, setMode] = useState<"google" | "senha">("google")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+
+  async function handleCredentialsSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setError("")
+    setLoading(true)
+    try {
+      const res = await signIn("credentials", { email, password, redirect: false })
+      if (res?.error) {
+        setError("E-mail ou senha incorretos.")
+        return
+      }
+      router.push("/")
+      router.refresh()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div
       className={quicksand.className}
@@ -103,15 +129,61 @@ export default function LoginPage() {
           <div style={{ flex: 1, height: 1, background: "rgba(124,58,237,0.15)" }} />
         </div>
 
-        <p style={{ fontSize: 13, fontWeight: 500, color: "#6B5B95", margin: "0 0 16px" }}>
-          Entre com sua conta Google para continuar
-        </p>
+        {mode === "google" ? (
+          <>
+            <p style={{ fontSize: 13, fontWeight: 500, color: "#6B5B95", margin: "0 0 16px" }}>
+              Entre com sua conta Google para continuar
+            </p>
 
-        <button onClick={() => signIn("google", { callbackUrl: "/" })} className="floralis-google-btn">
-          <GoogleIcon />
-          <span>Entrar com Google</span>
-          <span style={{ fontSize: 16 }}>🌸</span>
-        </button>
+            <button onClick={() => signIn("google", { callbackUrl: "/" })} className="floralis-google-btn">
+              <GoogleIcon />
+              <span>Entrar com Google</span>
+              <span style={{ fontSize: 16 }}>🌸</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <p style={{ fontSize: 13, fontWeight: 500, color: "#6B5B95", margin: "0 0 16px" }}>
+              Entre com seu e-mail e senha
+            </p>
+
+            <form onSubmit={handleCredentialsSubmit} style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
+              <input
+                type="email"
+                required
+                placeholder="E-mail"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="floralis-input"
+              />
+              <input
+                type="password"
+                required
+                placeholder="Senha"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="floralis-input"
+              />
+              {error && (
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#C0405A", margin: 0 }}>{error}</p>
+              )}
+              <button type="submit" disabled={loading} className="floralis-google-btn" style={{ opacity: loading ? 0.7 : 1 }}>
+                <span>{loading ? "Entrando..." : "Entrar"}</span>
+                <span style={{ fontSize: 16 }}>🌸</span>
+              </button>
+            </form>
+          </>
+        )}
+
+        <p style={{ marginTop: 14, marginBottom: 0 }}>
+          <button
+            type="button"
+            onClick={() => { setError(""); setMode(mode === "google" ? "senha" : "google") }}
+            style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600, color: "#9B7FCC", textDecoration: "underline" }}
+          >
+            {mode === "google" ? "Prefere entrar com e-mail e senha?" : "Prefere entrar com Google?"}
+          </button>
+        </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 32 }}>
           {features.map((f) => (
@@ -170,6 +242,24 @@ export default function LoginPage() {
           transform: translateY(-2px);
           box-shadow: 0 14px 34px rgba(124,58,237,0.38);
           background: linear-gradient(135deg, #8B5CF6, #9D6FF7);
+        }
+        .floralis-input {
+          width: 100%;
+          height: 48px;
+          border-radius: 14px;
+          border: 1px solid rgba(124,58,237,0.18);
+          background: rgba(255,255,255,0.85);
+          padding: 0 16px;
+          font-size: 14px;
+          font-family: inherit;
+          color: #4D3750;
+          outline: none;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          box-sizing: border-box;
+        }
+        .floralis-input:focus {
+          border-color: rgba(124,58,237,0.45);
+          box-shadow: 0 0 0 3px rgba(124,58,237,0.10);
         }
         @media (prefers-reduced-motion: reduce) {
           * { animation-duration: 0.001ms !important; }
